@@ -1,0 +1,213 @@
+{
+ "params": {},
+ "retired": {
+  "params": [],
+  "settings": []
+ },
+ "settings": {
+  "1": {
+   "max": 255,
+   "min": 0,
+   "name": "M1 TRKS",
+   "step": 1,
+   "type": "number"
+  },
+  "10": {
+   "labels": [
+    "ALL",
+    "SPRD"
+   ],
+   "name": "M2 MODE",
+   "type": "option"
+  },
+  "11": {
+   "labels": [
+    "ALL",
+    "SPRD"
+   ],
+   "name": "M3 MODE",
+   "type": "option"
+  },
+  "12": {
+   "labels": [
+    "ALL",
+    "SPRD"
+   ],
+   "name": "M4 MODE",
+   "type": "option"
+  },
+  "13": {
+   "labels": [
+    "ALL",
+    "SPRD"
+   ],
+   "name": "M5 MODE",
+   "type": "option"
+  },
+  "14": {
+   "labels": [
+    "ALL",
+    "SPRD"
+   ],
+   "name": "M6 MODE",
+   "type": "option"
+  },
+  "15": {
+   "labels": [
+    "ALL",
+    "SPRD"
+   ],
+   "name": "M7 MODE",
+   "type": "option"
+  },
+  "16": {
+   "labels": [
+    "ALL",
+    "SPRD"
+   ],
+   "name": "M8 MODE",
+   "type": "option"
+  },
+  "17": {
+   "labels": [
+    "OFF",
+    "DIN",
+    "USB",
+    "BOTH"
+   ],
+   "name": "M1 OUT",
+   "type": "option"
+  },
+  "18": {
+   "labels": [
+    "OFF",
+    "DIN",
+    "USB",
+    "BOTH"
+   ],
+   "name": "M2 OUT",
+   "type": "option"
+  },
+  "19": {
+   "labels": [
+    "OFF",
+    "DIN",
+    "USB",
+    "BOTH"
+   ],
+   "name": "M3 OUT",
+   "type": "option"
+  },
+  "2": {
+   "max": 255,
+   "min": 0,
+   "name": "M2 TRKS",
+   "step": 1,
+   "type": "number"
+  },
+  "20": {
+   "labels": [
+    "OFF",
+    "DIN",
+    "USB",
+    "BOTH"
+   ],
+   "name": "M4 OUT",
+   "type": "option"
+  },
+  "21": {
+   "labels": [
+    "OFF",
+    "DIN",
+    "USB",
+    "BOTH"
+   ],
+   "name": "M5 OUT",
+   "type": "option"
+  },
+  "22": {
+   "labels": [
+    "OFF",
+    "DIN",
+    "USB",
+    "BOTH"
+   ],
+   "name": "M6 OUT",
+   "type": "option"
+  },
+  "23": {
+   "labels": [
+    "OFF",
+    "DIN",
+    "USB",
+    "BOTH"
+   ],
+   "name": "M7 OUT",
+   "type": "option"
+  },
+  "24": {
+   "labels": [
+    "OFF",
+    "DIN",
+    "USB",
+    "BOTH"
+   ],
+   "name": "M8 OUT",
+   "type": "option"
+  },
+  "3": {
+   "max": 255,
+   "min": 0,
+   "name": "M3 TRKS",
+   "step": 1,
+   "type": "number"
+  },
+  "4": {
+   "max": 255,
+   "min": 0,
+   "name": "M4 TRKS",
+   "step": 1,
+   "type": "number"
+  },
+  "5": {
+   "max": 255,
+   "min": 0,
+   "name": "M5 TRKS",
+   "step": 1,
+   "type": "number"
+  },
+  "6": {
+   "max": 255,
+   "min": 0,
+   "name": "M6 TRKS",
+   "step": 1,
+   "type": "number"
+  },
+  "7": {
+   "max": 255,
+   "min": 0,
+   "name": "M7 TRKS",
+   "step": 1,
+   "type": "number"
+  },
+  "8": {
+   "max": 255,
+   "min": 0,
+   "name": "M8 TRKS",
+   "step": 1,
+   "type": "number"
+  },
+  "9": {
+   "labels": [
+    "ALL",
+    "SPRD"
+   ],
+   "name": "M1 MODE",
+   "type": "option"
+  }
+ },
+ "store": {
+  "id": "octabam.midi-routing",
+  "major": 1
+ }
+}

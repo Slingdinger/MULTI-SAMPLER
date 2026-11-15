@@ -1,0 +1,163 @@
+"""MULTI -- a one-track eight-voice multisampler (OctaZach 208), forked from repeat98's POLY MACHINE
+(octamad poly-machine 887a237, image 94, MIT; pinned beside it in modules/poly-machine/upstream).
+
+A sixth machine in the machine list, stored as type 5 (POLY's), with FLEX's sample slots and FLEX
+semantics. Eight untimestretched voices a track: the stock voice and seven extensions. A track whose
+sample is named with a note ("MELLO C3.wav") is a multisample: each note plays the slot with the
+nearest note among the slots around it that share its name, pitched with the PTCH lock (+-12). A voice
+at the primary's rate (its slot's own note) is fetched straight into the mix, no interpolation.
+Panel CHROMATIC keys, MIDI notes on the track's channel (72..96, AUDIO NOTE IN) and MIDI ROUTING play
+it. POLY's octave walk (FUNC + LEFT / RIGHT 0..2) is left out: SCALE QUANTIZER owns that site.
+"""
+
+from remix.schema import Category, Detour, Kind, Linked, Module, Poke, Proof
+
+H = bytes.fromhex
+U32 = lambda value: value.to_bytes(4, "big")
+
+MODULE = Module(
+    name="multi",
+    key="MULTI",
+    kind=Kind.CF_PATCH,
+    category=Category.MACHINES,
+    author="repeat98 (POLY MACHINE); OctaZach (MULTI)",
+    author_url="https://github.com/repeat98/octamad/tree/887a237686d39defb7b85f29359f1e29b9ff6241/modules/poly-machine",
+    proof=Proof.PORT,
+    proof_note="POLY's emulator measurements (octemu); MULTI: voices, fast path and multisample under the port, not on a unit",
+    doc="MULTI machine: eight untimestretched FLEX voices on one track, a note-named sample set played as a multisample (nearest note, PTCH +-12).",
+    conflicts=(("POLY MACHINE", "the same machine type 5 and every POLY hook"),
+               ("OCTA303", "the sixth machine-list row"),
+               ("SYNTH MACHINE", "the MIDI chromatic note-on / note-off sites")),
+    linked=(Linked("multi", "modules/multi/multi.s", dram=True),),
+    detours=(
+        Detour(0x400041C4, H("4eba379a4fef0018"), "multi", "mu_call",
+               "render and mix four states only for raw MULTI tracks", pad_to=8),
+        Detour(0x40006820, H("2f0a2f02222f000c"), "multi", "mu_stop_voice",
+               "stop the selected POLY extension without clearing the primary", pad_to=8),
+        Detour(0x40007978, H("223c000000a8"), "multi", "voice_pointer",
+               "select the stock or POLY extension voice state"),
+        Detour(0x4000C0D6, H("713008002a40d080"), "multi", "mu_config_type",
+               "alias POLY to FLEX while indexing machine configuration", pad_to=8),
+        Detour(0x40004100, H("a1c0eca027400024"), "multi", "mu_increment_shift",
+               "a POLY key's octave shift reaches the DSP increment and the fetch rate",
+               pad_to=8),
+        Detour(0x4000C140, H("242f0072e78a"), "multi", "mu_config_tstr",
+               "POLY plays untimestretched: live TSTR forced OFF (the Part keeps its value)"),
+        Detour(0x4000BFE8,H("733228007007"), "multi", "mu_live_type",
+               "publish stored MULTI as FLEX in the per-ping live machine mirror"),
+        Detour(0x4000F450, H("4fefffc448d77cfc"), "multi", "mu_voice_trigger",
+               "preserve the active primary before the common sample retrigger",
+               pad_to=8),
+        Detour(0x400334D8, H("2f02222f0008"), "multi", "mu_machine_name",
+               "format raw machine type 5 as POLY"),
+        Detour(0x4003C928, H("4bf9400a78c8"), "multi", "mu_src_names",
+               "point SRC SETUP at a six-entry machine-name table", kind="lea"),
+        # The same five-entry lookup is inlined at two more sites (the four
+        # references to 0x400a78c8 in the image are these, SRC SETUP's, and
+        # the function poly_machine_name replaces). Both are repointed the
+        # same way: the table where the name comes from, the bound where
+        # the row is admitted, no code in the path. Without them a POLY
+        # track drew the out-of-range default, the string ERROR, on the
+        # main page footer (measured, image 90).
+        Detour(0x4003D718, H("41f9400a78c8"), "multi", "mu_src_names",
+               "inline machine-name lookup A reads the six-entry table", kind="lea"),
+        Detour(0x4004C36A, H("41f9400a78c8"), "multi", "mu_src_names",
+               "inline machine-name lookup B reads the six-entry table", kind="lea"),
+        # Restored 22 Sep 2026. These six were pulled in builds 84-89 after
+        # octemu showed the UI stalling on the first track change and
+        # crashing on the SRC double-click -- measured that day on an
+        # emulator that never landed the DRAM runtime (it depacks through
+        # the uncached alias, which octemu mapped as separate memory), so
+        # EVERY detour into the runtime jumped into a zero-filled window.
+        # The instrument is fixed; the hooks go back in and the bisect is
+        # being re-run against a runtime that is actually there.
+        Detour(0x400788C4, H("71907401b48055c07100528023c0460e739a"),
+               "multi", "mu_sample_ui_init",
+               "the sample browser opens on a POLY track as if it were FLEX",
+               pad_to=18),
+        Detour(0x40078950, H("42b9460e739a"), "multi", "mu_sample_ui_left",
+               "returning left from the browser restores the POLY machine"),
+        Detour(0x40079102, H("2039460e738e7601"), "multi", "mu_sample_ui_right",
+               "entering the browser presents POLY to stock code as FLEX",
+               pad_to=8),
+        # SRC SETUP's own copy of the chooser (double-click SRC, FUNC+SRC)
+        # keys STATIC/FLEX behaviour on its machine cursor 0x460d5c30 and
+        # tests 0 and 1 only: on POLY, RIGHT did nothing (measured under
+        # octemu: the handler is 0x4003d1c0, not the 0x4007909c the hooks
+        # above patch, which never runs from this page). Each read that
+        # picks a slot list, a Part slot byte or the load record sees FLEX;
+        # the two commit sites (0x4005a616, 0x4005a850) keep the raw 5.
+        Detour(0x4003A4B4, H("2439460d5c30"), "multi", "mu_src_cursor_scroll",
+               "SRC SETUP slot-list scrolling treats POLY as FLEX"),
+        Detour(0x4003C8C4, H("2c39460d5c30"), "multi", "mu_src_cursor_draw",
+               "SRC SETUP redraw keeps a POLY slot pane open and draws the FLEX list"),
+        Detour(0x4003D016, H("2239460d5c30"), "multi", "mu_src_cursor_record",
+               "SRC SETUP load record names the FLEX slot pool for POLY"),
+        Detour(0x4003D07C, H("2639460d5c30"), "multi", "mu_src_cursor_updown_old",
+               "SRC SETUP UP/DOWN move the FLEX slot list on POLY"),
+        Detour(0x4003D0FA, H("2239460d5c30"), "multi", "mu_src_cursor_updown_new",
+               "SRC SETUP reads POLY's FLEX slot byte, not the next track's STATIC"),
+        Detour(0x4003D1DA, H("2239460d5c30"), "multi", "mu_src_cursor_right",
+               "SRC SETUP RIGHT opens the FLEX slot pane on POLY"),
+        Detour(0x4005A67C, H("2039460d5c30"), "multi", "mu_src_cursor_commit_list",
+               "SRC SETUP shows the FLEX slot list after committing POLY"),
+        Detour(0x4005A766, H("2839460d5c30"), "multi", "mu_src_cursor_slot_yes",
+               "SRC SETUP slot YES takes the FLEX path on POLY"),
+        Detour(0x4005A806, H("2f39460d5c30"), "multi", "mu_src_cursor_slot_lookup",
+               "SRC SETUP slot lookup is asked for FLEX on POLY"),
+        Detour(0x4004FB94,H("4feffff048d7041c"), "multi", "mu_chromatic_key",
+               "queue simultaneous chromatic presses; release by originating key",
+               pad_to=8),
+        Detour(0x4000B7BC, H("42b04c0041f946c802a6"), "multi", "mu_chord_dequeue",
+               "drain one queued chromatic press per frame", pad_to=10),
+        # MIDI chromatic play (notes 72..96 on a track's channel) writes the
+        # same one-command mailbox from the MIDI task, and its note-off
+        # releases only the track's single held note: on POLY a MIDI chord
+        # collapsed when its notes shared a frame, and every note but the
+        # last rang on after its note-off.
+        Detour(0x4000E746, H("721d2b812c007113"), "multi", "mu_midi_note_on",
+               "a MIDI chromatic note-on presses a POLY key (queued, owned)", pad_to=8),
+        Detour(0x4000DFD4, H("73107113b081661c"), "multi", "mu_midi_note_off",
+               "a MIDI chromatic note-off releases the voices its note owns", pad_to=8),
+        Detour(0x400437B6, H("41f9460d171d"), "multi", "mu_release_held",
+               "a track or mode change releases every panel key held on POLY"),
+        # The keyboard draw boxes one held key per track from 0x460d171d,
+        # which POLY never set: a POLY chord drew no box (octemu, 25 Sep).
+        Detour(0x400449F0, H("45f9460d171d"), "multi", "mu_kbd_fill",
+               "the chromatic keyboard boxes every key held on a POLY track"),
+        Detour(0x40044B5C, H("528ab5fc460d1725"), "multi", "mu_kbd_next",
+               "the keyboard draw loop walks the POLY box list", pad_to=8),
+    ),
+    pokes=(
+        Poke(0x4000244E, H("7204"), H("7205"),
+             "project loader accepts stored machine type 5"),
+        Poke(0x40002454, H("7004"), H("7005"),
+             "project loader clamps machine values above MULTI to 5"),
+        Poke(0x40079248, H("48780005"), H("48780006"),
+             "machine chooser contains six entries, including MULTI"),
+        Poke(0x400585FA, H("48780005"), H("48780006"),
+             "SRC SETUP selector contains six entries, including MULTI"),
+        Poke(0x4003C950, H("7204"), H("7205"),
+             "SRC SETUP name lookup admits the MULTI row"),
+        Poke(0x4003D712, H("7404"), H("7405"),
+             "inline machine-name lookup A admits the MULTI row"),
+        Poke(0x4004C364, H("7404"), H("7405"),
+             "inline machine-name lookup B admits the MULTI row"),
+        Poke(0x40078678, H("7004"), H("7005"),
+             "machine chooser draws raw type 5"),
+        Poke(0x400786CE, H("7004"), H("7005"),
+             "machine chooser highlights raw type 5"),
+        Poke(0x40079904, H("7604"), H("7605"),
+             "machine chooser persists raw type 5"),
+        Poke(0x400971BE, H("7005"), H("7001"),
+             "operational resolver aliases stored MULTI to FLEX"),
+        Poke(0x400D5F4C, U32(0x400D34D2), U32(0x400D31AE),
+             "MULTI uses the FLEX playback-page descriptor"),
+        Poke(0x400D6448, U32(0x400047F0), U32(0x40004008),
+             "MULTI uses the STATIC/FLEX playback-increment builder"),
+        Poke(0x400D6468, U32(0x00000000), U32(0x4000F450),
+             "MULTI uses the STATIC/FLEX common voice initializer"),
+        Poke(0x4000C02C, H("7004"), H("7005"),
+             "machine-change bookkeeping accepts raw MULTI"),
+    ),
+)
