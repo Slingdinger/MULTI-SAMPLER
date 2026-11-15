@@ -16,7 +16,9 @@ M1-M8 across, audio tracks T1-T8 down. A filled square is a route.
 | D: MODE | For the cursor's MIDI track. **SPRD**: one note a track (chords; a note past the last free track takes the one sounding longest). **ALL**: every note on every routed track. |
 | F: OUT | Where the cursor's MIDI track's routed notes also go: **OFF**, **DIN**, **USB**, **BOTH**. |
 
-A MIDI track with no routes is stock. The MIDI track needs a CHAN for its notes to play.
+A new project starts with each MIDI track routed to its own audio track (M1 to T1 ... M8 to T8),
+OUT BOTH, so the MIDI tracks still play external gear; untick a cell to stop it. A MIDI track with
+no routes is stock. The MIDI track needs a CHAN for its notes to play.
 
 ## Multisamples
 

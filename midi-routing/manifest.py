@@ -34,11 +34,11 @@ MODULE = Module(
     doc="NOTE SETUP shows a MIDI-to-audio routing map (arrows + YES; D MODE ALL/SPRD, F OUT OFF/DIN/USB/BOTH): routed MIDI tracks play audio tracks, multisampled from FLEX slots named by note.",
     requires_brain=True,
     store=Store("octabam.midi-routing"),
-    settings=tuple(Setting(m + 1, f"M{m + 1} TRKS", Number(0, 255), default=0, **P,
+    settings=tuple(Setting(m + 1, f"M{m + 1} TRKS", Number(0, 255), default=1 << m, **P,
                            doc=f"the audio tracks MIDI track {m + 1} plays (bit 0 = T1)") for m in range(8))
     + tuple(Setting(m + 9, f"M{m + 1} MODE", Option("ALL", "SPRD"), default="SPRD", **P,
                     doc=f"MIDI track {m + 1}: every note on every routed track, or one note a track") for m in range(8))
-    + tuple(Setting(m + 17, f"M{m + 1} OUT", Option("OFF", "DIN", "USB", "BOTH"), default="OFF", **P,
+    + tuple(Setting(m + 17, f"M{m + 1} OUT", Option("OFF", "DIN", "USB", "BOTH"), default="BOTH", **P,
                     doc=f"where MIDI track {m + 1}'s routed notes also go") for m in range(8)),
     conflicts=(("303 FOLLOW", "the same MIDI-track sender operands and f3_page_send"),
                ("MIDI LOOPBACK", "the same MIDI-track sender operands"),

@@ -74,7 +74,8 @@ play it.
 | D: MODE | **SPRD**: one note a track (a MULTI track counts as eight). **ALL**: every note on every routed track. |
 | F: OUT | Where the routed notes also go: **OFF**, **DIN**, **USB**, **BOTH**. |
 
-A MIDI track needs a CHAN for its notes to play. Unrouted MIDI tracks are stock.
+A new project starts with M1 → T1 … M8 → T8 and OUT BOTH (external gear still plays); untick a cell
+to stop a route. A MIDI track needs a CHAN for its notes to play. Unrouted MIDI tracks are stock.
 
 ---
 
