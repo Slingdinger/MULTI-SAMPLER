@@ -186,9 +186,11 @@ rt_seqtrig:
     bne.s 1f
     jmp 0x4000b9aa
 1:  jmp 0x4000b9d4
-2:  move.w %d0,%ccr                     | linked: a trig (bit 2) does what a trigless lock (bit 4) does
-    bne.s 1b                            | (211 only skipped it: its locks never applied, Zach's unit)
-    jmp 0x4000b9e8
+2:  btst #2,%d0                         | linked: a note trig (event 29, or 61 one-shot: bit 2) becomes
+    beq.s 1b                            | a lock-only step (event 1: the step handler 0x4009d1e8's codes,
+    andi.l #-61,%d0                     | 29 note, 25 trigless, 61 one-shot, 1 lock-only) in the step's
+    move.l %d0,(%a0,%a1.l*4)            | word itself, so every later reader sees a trigless lock.
+    jmp 0x4000b9d4                      | (211 skipped the trig, 212 kept its word: no locks applied.)
 
 /* formatters (char *buf, int value) */
 rt_fmt_mode:
