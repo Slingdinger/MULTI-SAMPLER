@@ -1192,7 +1192,14 @@ mu_press_key:
         move.l  %d1,%d3
         bsr.w   .hold_add
         lea     (PENDING_COMMANDS).l,%a0
-        tst.l   (%a0,%d4.l*4)
+| A release alone still in the mailbox (the last key let go this very moment) and a key pressed now:
+| legato, the release is withdrawn and the key armed. Taken first, it ended the new key before it
+| sounded: CHORDS' last-pressed keys let one chord go and press the next together (OctaZach 218).
+        moveq   #CMD_RELEASE,%d0
+        cmp.l   (%a0,%d4.l*4),%d0
+        bne.s   1f
+        clr.l   (%a0,%d4.l*4)
+1:      tst.l   (%a0,%d4.l*4)
         beq.s   .ppk_arm
         lea     mu_chord_count(%pc),%a0
         mvz.b   (%a0,%d4.l),%d2

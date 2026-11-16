@@ -113,6 +113,9 @@ FOLLOW. No Elektron code is in this repo: the build patches your own 1.40C.
   step locks (a trig's or a trigless lock's), read from the pattern as the note starts: the nearest
   step back with a trig or lock, so an erased lock stops applying. The first version read the locks
   31 bytes off (none found); fixed (OctaZach 216).
+- **Legato** — every key let go and a new one pressed at the same moment (a CHORDS chord change)
+  ended the new notes before they sounded: the last key's release was still waiting and was taken
+  after them. A press now withdraws a release still waiting (OctaZach 218).
 
 ---
 
