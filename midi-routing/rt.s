@@ -181,11 +181,14 @@ rt_seqtrig:
     adda.l #0x8eda2,%a2
     move.b (%a2),%d1
     cmpi.b #5,%d1
-    beq.s 1f
+    beq.s 2f
     move.w %d0,%ccr
     bne.s 1f
     jmp 0x4000b9aa
 1:  jmp 0x4000b9d4
+2:  move.w %d0,%ccr                     | linked: a trig (bit 2) does what a trigless lock (bit 4) does
+    bne.s 1b                            | (211 only skipped it: its locks never applied, Zach's unit)
+    jmp 0x4000b9e8
 
 /* formatters (char *buf, int value) */
 rt_fmt_mode:
