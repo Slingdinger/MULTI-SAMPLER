@@ -54,7 +54,8 @@ A multisampler for the Octatrack MKI/MKII (OS 1.40C), built as two
 - **Cheap when every key is sampled.** A note with its own file plays at its own speed, so the voice
   is copied straight into the mix — no interpolation. Notes between files are resampled (POLY's
   linear interpolation).
-- **Mix:** unity for one voice, /2 for two, /4 for three or four, /8 for five to eight.
+- **Mix:** every voice at -6 dB however many sound (a note keeps its level as others join); the
+  mix clips, never wraps, past full scale.
 - **Stacking:** route a MIDI track to two MULTI tracks with MODE **SPRD** and it fills one track's eight
   voices, then the next: 16 voices, each track with its own AMP, FX and level (not yet tested with
   two MULTI tracks). A layer is another

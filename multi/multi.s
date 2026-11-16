@@ -459,23 +459,11 @@ mu_call:
 | resamples the whole track by that one increment.  So the primary renders
 | as stock does, and each extension fetches its own frame count and is
 | resampled here to the primary's source rate before the mix (.render_ext).
-| Gain by the voices that contribute to the chunk: unity for one, /2 for
-| two, /4 for three or four, /8 for five to eight (shifts, no divide in the
-| audio task).  The primary renders into the output and is scaled there; each
-| active extension renders into the one scratch buffer and is added, scaled.
-        moveq   #0,%d6
-        moveq   #1,%d0
-        cmp.l   %d0,%d4
-        beq.s   .gain_done
+| Gain (210): every voice at -6 dB (a shift by 1), however many sound, so a
+| note's level no longer drops when another starts (208/209 scaled the mix
+| by the voice count: /2, /4, /8 -- Zach's unit, 15 Nov 2026). The mix
+| saturates instead of wrapping when the voices add past full scale.
         moveq   #1,%d6
-        moveq   #2,%d0
-        cmp.l   %d0,%d4
-        beq.s   .gain_done
-        moveq   #2,%d6
-        moveq   #4,%d0
-        cmp.l   %d0,%d4
-        bcc.s   .gain_done
-        moveq   #3,%d6
 .gain_done:
         clr.l   mu_voice_selector
         movea.l 40(%a5),%a4
@@ -511,12 +499,21 @@ mu_call:
         move.l  %d5,%d0
         lsl.l   #1,%d0
         subq.l  #1,%d0
+        move.l  %d2,-(%sp)
 .mix:
         move.l  (%a1)+,%d1
         asr.l   %d6,%d1
-        add.l   %d1,(%a0)+
+        move.l  (%a0),%d2
+        add.l   %d1,%d2
+        bvc.s   1f
+        move.l  #0x7fff0000,%d2           | past full scale: clip, never wrap
+        tst.l   %d1
+        bpl.s   1f
+        move.l  #0x80000000,%d2
+1:      move.l  %d2,(%a0)+
         subq.l  #1,%d0
         bpl.s   .mix
+        move.l  (%sp)+,%d2
 .ext_next:
         addi.l  #VOICE_SIZE,%d4
         addq.l  #1,%d3

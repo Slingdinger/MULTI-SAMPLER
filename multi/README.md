@@ -25,8 +25,8 @@ its name, pitched with a PTCH lock (at most 12 semitones from it). A note that h
 it at its own speed, so the voice is copied straight into the mix (no interpolation): the cheaper
 case, and the reason to sample every key.
 
-A ninth note takes over the oldest voice. Voices are mixed at unity for one, /2 for two, /4 for
-three or four, /8 for five to eight. A track whose sample has no note in its name plays like POLY:
+A ninth note takes over the oldest voice. Every voice plays at -6 dB however many sound, so a note
+keeps its level when others start; the mix clips (never wraps) past full scale. A track whose sample has no note in its name plays like POLY:
 every voice its own pitch, the same sample.
 
 ## Limits
