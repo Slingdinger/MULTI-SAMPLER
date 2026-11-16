@@ -83,12 +83,45 @@ static unsigned rt_mnote(unsigned k, unsigned p) { return mu_is_ms(k) ? p : p + 
  * trig, a trigless lock, a linked track's lock step) leaves its 32 lock bytes here (rt_seqtrig copies
  * the step's pending slot), and every MIDI note started on that track takes them -- until the next
  * audio step replaces them (Zach's choice b). PTCH (0) and the sample (31) stay the note's own. */
-unsigned char rt_stk[8][32] = {[0 ... 7] = {[0 ... 31] = 0xff}};
+/* (215) Computed from the pattern when a note starts, not kept from the step that fired: 214 kept an
+ * erased trigless lock's values until another lock replaced them. The track's step now (its step
+ * counter 0x800064d0[t]; the MIDI source's 0x800064d8[m] when that is one ahead, the same tick) and
+ * back, wrapping at the track's length, to the nearest step with a trig or a lock (masks at +0x00,
+ * +0x08, +0x10, +0x18 of the track record): its locks as they are now. None: the PART's values. */
+unsigned char rt_src_now = 255;
+#define TRK(p, t) (U32(0x46c82456u) + 0x8ed8u * (p) + 0x91au * (t))
+#define REC(p, t, s) (TRK(p, t) + 0x78u + 32u * ((s) - 1u))
+unsigned rt_lockstep;                                           /* (the last step found, for a look) */
+
+static int rt_stepon(unsigned trk, unsigned s) {
+    const volatile unsigned char *m = (const volatile unsigned char *)trk;
+    unsigned b = 7u - (s - 1u) / 8u, bit = (s - 1u) % 8u;
+    for (unsigned o = 0; o < 0x20u; o += 8u) if (m[o + b] >> bit & 1u) return 1;
+    return 0;
+}
+
 void rt_locks(unsigned t) {
     if (t > 7) return;
+    unsigned p = U8(0x80000004u) & 15u, trk = TRK(p, t);
+    unsigned len = U8(trk + 0x50u);
+    if (len < 1 || len > 64) len = U8(U32(0x46c82456u) + 0x8ed8u * p + 0x8e53u);
+    if (len < 1 || len > 64) len = 64;
+    unsigned s = U8(0x800064d0u + t);
+    if (rt_src_now < 8) {
+        unsigned m = U8(0x800064d8u + rt_src_now);
+        if (m == s + 1u || (s == len && m == 1u)) s = m;
+    }
+    if (s < 1 || s > len) s = 1;
+    rt_lockstep = 0;
+    for (unsigned i = 0; i < len; i++) {
+        if (rt_stepon(trk, s)) { rt_lockstep = s; break; }
+        s = s > 1 ? s - 1 : len;
+    }
+    if (!rt_lockstep) return;
+    const volatile unsigned char *r = (const volatile unsigned char *)REC(p, t, rt_lockstep);
     volatile unsigned char *st = (volatile unsigned char *)STAGED(t);
     for (unsigned k = 1; k < 31; k++)
-        if (rt_stk[t][k] != 0xff && st[k] == 0xff) st[k] = rt_stk[t][k];
+        if (r[k] != 0xff && st[k] == 0xff) st[k] = r[k];
 }
 
 unsigned char rt_on[16 * 128], rt_osrc[16 * 128];   /* the tracks a (channel, note) plays, its source */
@@ -107,6 +140,7 @@ static void rt_stop(unsigned k, unsigned idx) {      /* (channel, note) idx ends
 
 static void rt_play(unsigned k, unsigned p, unsigned ch, unsigned src) {
     unsigned idx = ch * 128u + p;
+    rt_src_now = (unsigned char)src;
     if (rt_multi(k)) {
         if (!mu_note(k, rt_mnote(k, p), 1)) return;
         if (rt_held[k] < 8) rt_held[k]++;
