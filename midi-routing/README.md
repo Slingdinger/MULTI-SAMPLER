@@ -39,6 +39,13 @@ as its own notes: up to eight at once on the one track, its multisample choosing
 fills a MULTI track's eight voices before the next routed track. Other machines (303, FM, POLY8)
 need their adapters, not built yet.
 
+## Linked pairs
+
+An audio track playing a sound generator (MULTI) is linked to its MIDI track (T1 with M1 ...): its
+notes come from MIDI only. Its own trigs act as trigless locks (their p-locks and sample locks
+apply, no note starts), and TRACKS / CHROMATIC / QUICK MUTE set on one side are set on the other
+(TRIG MODES). FLEX and STATIC tracks stay independent.
+
 ## What plays
 
 The MIDI track's sequenced notes, its CHROMATIC keys, CHORDS mode and the CHORDS FACTORY page.

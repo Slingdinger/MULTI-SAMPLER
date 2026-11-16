@@ -162,6 +162,31 @@ rt_draw:
     lea 52(%sp),%sp
     rts
 
+/* 0x4000b9a2 in the frame ISR's sequencer step (8 bytes: move.l (a0,a1.l*4),d0; move.w d0,ccr; bne
+ * 0x4000b9d4): bit 2 of the step's command word 0x46c7e998[] is a trig (set: the track's flag byte
+ * 0x46104d15[t] takes 0x10, the voice starts), clear a trigless lock. A linked pair (OctaZach 211):
+ * an audio track playing a sound generator (MULTI, machine type 5) takes its notes from its MIDI
+ * track only, so its own trigs are taken as trigless: their locks apply, no note starts. t = 114(sp).
+ * Uses d1 a2 (stock reloads both). */
+    .global rt_seqtrig
+rt_seqtrig:
+    move.l (%a0,%a1.l*4),%d0
+    movea.l 0x46c82456,%a2
+    moveq #0,%d1
+    move.b 0x100b14cf,%d1
+    andi.l #3,%d1
+    mulu.w #6322,%d1
+    adda.l %d1,%a2
+    adda.l 114(%sp),%a2
+    adda.l #0x8eda2,%a2
+    move.b (%a2),%d1
+    cmpi.b #5,%d1
+    beq.s 1f
+    move.w %d0,%ccr
+    bne.s 1f
+    jmp 0x4000b9aa
+1:  jmp 0x4000b9d4
+
 /* formatters (char *buf, int value) */
 rt_fmt_mode:
     move.l 4(%sp),%a0

@@ -60,6 +60,8 @@ MODULE = Module(
                "NOTE SETUP's D / F values: the cursor's MIDI track's MODE / OUT"),
         Detour(0x4003678a, H("4cd77cfc4fef0034"), "midirouting", "rt_draw",
                "the end of NOTE SETUP's draw: the routing map in the left box", pad_to=8),
+        Detour(0x4000b9a2, H("20309c0044c0662a"), "midirouting", "rt_seqtrig",
+               "a linked pair: a sound-generator audio track's own trigs carry locks only", pad_to=8),
     ),
     symbol_refs=tuple(SymbolRef(site, 0x40010bc8, "midirouting", "rt_send",
                                 "a MIDI-track note can play its routed audio tracks")
