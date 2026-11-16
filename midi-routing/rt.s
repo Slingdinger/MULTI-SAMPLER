@@ -624,7 +624,7 @@ rt_locks.part.0:
 	move.l %a4,%d1
 	lsl.l #5,%d3
 	lsl.l #5,%d1
-	lea 120(%a3,%a0.l),%a0
+	lea 89(%a3,%a0.l),%a0
 	move.l %a0,%d2
 	add.l %d3,%d2
 	sub.l %d2,%d1

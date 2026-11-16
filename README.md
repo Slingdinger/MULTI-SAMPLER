@@ -109,6 +109,10 @@ FOLLOW. No Elektron code is in this repo: the build patches your own 1.40C.
 - **Fix** — the name → slot map is built once, outside the audio path, and only read during
   playback; a chord's later voices take the increment their note was rendered with. Emulator: 35
   slots, 8-note chords, every voice its own file, all on the fast path.
+- **Audio locks on routed notes** — a note a MIDI track plays on an audio track takes that track's
+  step locks (a trig's or a trigless lock's), read from the pattern as the note starts: the nearest
+  step back with a trig or lock, so an erased lock stops applying. The first version read the locks
+  31 bytes off (none found); fixed (OctaZach 216).
 
 ---
 

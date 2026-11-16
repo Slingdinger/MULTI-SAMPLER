@@ -90,7 +90,7 @@ static unsigned rt_mnote(unsigned k, unsigned p) { return mu_is_ms(k) ? p : p + 
  * +0x08, +0x10, +0x18 of the track record): its locks as they are now. None: the PART's values. */
 unsigned char rt_src_now = 255;
 #define TRK(p, t) (U32(0x46c82456u) + 0x8ed8u * (p) + 0x91au * (t))
-#define REC(p, t, s) (TRK(p, t) + 0x78u + 32u * ((s) - 1u))
+#define REC(p, t, s) (TRK(p, t) + 0x59u + 32u * ((s) - 1u))   /* as STEP VIEW; stock reads +0x859 + s just past them (0x4009d5ce) */
 unsigned rt_lockstep;                                           /* (the last step found, for a look) */
 
 static int rt_stepon(unsigned trk, unsigned s) {
