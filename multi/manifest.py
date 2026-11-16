@@ -127,6 +127,12 @@ MODULE = Module(
                "the chromatic keyboard boxes every key held on a POLY track"),
         Detour(0x40044B5C, H("528ab5fc460d1725"), "multi", "mu_kbd_next",
                "the keyboard draw loop walks the POLY box list", pad_to=8),
+        Detour(0x4000c458, H("733018002a41"), "multi", "mu_restore_type",
+               "the lock restore at a trig reads a MULTI track's PLAYBACK values as FLEX's"),
+        Detour(0x4009d7fe, H("75102207d281"), "multi", "mu_step_type_a",
+               "the step handler's PLAYBACK lock defaults: MULTI as FLEX"),
+        Detour(0x4009d862, H("75102207d281"), "multi", "mu_step_type_b",
+               "the step handler's PLAYBACK lock defaults (second site): MULTI as FLEX"),
     ),
     pokes=(
         Poke(0x4000244E, H("7204"), H("7205"),

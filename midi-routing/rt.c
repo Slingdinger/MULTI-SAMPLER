@@ -79,6 +79,18 @@ extern int mu_is_ms(unsigned t) __attribute__((weak));
 static int rt_multi(unsigned k) { return mu_note && U8(PART() + 0x8eda2u + k) == 5; }
 static unsigned rt_mnote(unsigned k, unsigned p) { return mu_is_ms(k) ? p : p + 24u; }
 
+/* The audio track's locks as the MIDI notes take them (OctaZach 214): every audio step that fires (a
+ * trig, a trigless lock, a linked track's lock step) leaves its 32 lock bytes here (rt_seqtrig copies
+ * the step's pending slot), and every MIDI note started on that track takes them -- until the next
+ * audio step replaces them (Zach's choice b). PTCH (0) and the sample (31) stay the note's own. */
+unsigned char rt_stk[8][32] = {[0 ... 7] = {[0 ... 31] = 0xff}};
+void rt_locks(unsigned t) {
+    if (t > 7) return;
+    volatile unsigned char *st = (volatile unsigned char *)STAGED(t);
+    for (unsigned k = 1; k < 31; k++)
+        if (rt_stk[t][k] != 0xff && st[k] == 0xff) st[k] = rt_stk[t][k];
+}
+
 unsigned char rt_on[16 * 128], rt_osrc[16 * 128];   /* the tracks a (channel, note) plays, its source */
 unsigned char rt_held[8];
 
@@ -123,6 +135,7 @@ static void rt_play(unsigned k, unsigned p, unsigned ch, unsigned src) {
         if (off < -12) off = -12;
         U8(STAGED(k)) = (unsigned char)(64 + 5 * off);
         if (slot >= 0) U8(STAGED(k) + 31u) = (unsigned char)slot;
+        rt_locks(k);
         ((int (*)(unsigned, unsigned, unsigned, int))0x40005030u)(k, 0x1du, 1u, -1);
         rt_note[k] = (unsigned char)p;
         rt_chan[k] = (unsigned char)ch;

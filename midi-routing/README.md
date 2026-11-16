@@ -46,6 +46,10 @@ notes come from MIDI only. Its own trigs act as trigless locks (their p-locks an
 apply, no note starts), and TRACKS / CHROMATIC / QUICK MUTE set on one side are set on the other
 (TRIG MODES). FLEX and STATIC tracks stay independent.
 
+A MIDI note routed to an audio track takes that track's locks from its last audio step that fired
+(a trig, a trigless lock, a linked track's lock step), until the next audio step replaces them; its
+pitch and sample stay the note's own.
+
 ## What plays
 
 The MIDI track's sequenced notes, its CHROMATIC keys, CHORDS mode and the CHORDS FACTORY page.

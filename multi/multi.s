@@ -56,6 +56,7 @@
         .global mu_scratch
         .global mu_next
         .global mu_press, mu_release
+        .weak   rt_locks
 
 | C ABI wrappers for MIDI ROUTING (mu.c's mu_note): (track, owner).
 mu_press:
@@ -1410,6 +1411,17 @@ mu_release_key:
         beq.s   .ak_noslot
         move.b  %d1,31(%a0,%d0.l)        | the multisample's slot lock
 .ak_noslot:
+        lea     rt_locks,%a0             | MIDI ROUTING's audio-step locks for the note (OctaZach 214;
+        cmpa.l  #0,%a0                   | weak: MULTI builds without it)
+        beq.s   .ak_nolocks
+        lea     -8(%sp),%sp
+        movem.l %d4/%a1,(%sp)
+        move.l  %d4,-(%sp)
+        jsr     (%a0)
+        addq.l  #4,%sp
+        movem.l (%sp),%d4/%a1
+        lea     8(%sp),%sp
+.ak_nolocks:
         lea     (PENDING_COMMANDS).l,%a0
         moveq   #CMD_TRIGGER,%d0
         move.l  %d0,(%a0,%d4.l*4)
@@ -1672,6 +1684,34 @@ mu_slow:
 | objcopy omits trailing all-zero bytes. Keep all state inside the image.
 mu_runtime_end_marker:
         .long   0x504f4c59                  | "POLY"
+
+| MULTI (214): stock's lock restore at a trig (0x4000c458) and the step handler's PLAYBACK lock
+| defaults (0x4009d7fe, 0x4009d862) read the Part's PLAYBACK values at machine * 6: type 5 read the
+| next track's. MULTI is FLEX there.
+        .global mu_restore_type, mu_step_type_a, mu_step_type_b
+mu_restore_type:
+        .word   0x7330,0x1800             | displaced mvs.b (a0,d1.l),d1
+        cmpi.l  #POLY_TYPE,%d1
+        bne.s   1f
+        moveq   #1,%d1
+1:      movea.l %d1,%a5                   | displaced
+        jmp     (0x4000c45e).l
+mu_step_type_a:
+        .word   0x7510                    | displaced mvs.b (a0),d2
+        cmpi.l  #POLY_TYPE,%d2
+        bne.s   1f
+        moveq   #1,%d2
+1:      move.l  %d7,%d1                   | displaced
+        add.l   %d1,%d1                   | displaced
+        jmp     (0x4009d804).l
+mu_step_type_b:
+        .word   0x7510
+        cmpi.l  #POLY_TYPE,%d2
+        bne.s   1f
+        moveq   #1,%d2
+1:      move.l  %d7,%d1
+        add.l   %d1,%d1
+        jmp     (0x4009d868).l
 
 | ---- mu.c, m68k-linux-gnu-gcc -mcpu=54455 -O2 -fomit-frame-pointer (labels prefixed, sections joined)
 #NO_APP
