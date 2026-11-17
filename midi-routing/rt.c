@@ -5,7 +5,8 @@
  *   MODE  0 ALL (every note on every routed track), 1 LINK (one note a track)
  *   OUT   where its notes also go: 0 OFF, 1 DIN, 2 USB, 3 BOTH
  *   IN    1: notes from MIDI IN on its CHAN play its audio tracks, and stock's audio note-in ignores
- *         that channel (no track trigs, mutes or second notes); 0: MIDI IN as stock (OctaZach 221)
+ *         that channel (no track trigs, mutes or second notes); 0: MIDI IN as stock (OctaZach 221);
+ *         D pushed shows it in MODE's box (222), a small arrow under the value says the box has two
  * A routed note plays as a CHROMATIC key's live note: the pitch as the track's PTCH lock (5 a semitone,
  * +-12) and, on a FLEX track whose sample is named with a note ("MELLO C3"), the nearest-note slot of
  * the run of slots around it that share its name as the sample lock (a multisample).
@@ -27,7 +28,6 @@ extern int *const rt_v[32];             /* rt.s: the BRAIN value longs, TRKS M1-
 #define MODE(m) (*rt_v[8 + (m)])
 #define OUTV(m) (*rt_v[16 + (m)])
 #define INV(m) (*rt_v[24 + (m)])
-#define FUNC_HELD 0x46c7dd26u                                     /* long: nonzero while FUNCTION is down */
 #define LABEL_D 0x400d3e8au                                       /* NOTE SETUP D's label (6 bytes) */
 extern void rt_din(unsigned len, const unsigned char *m);
 extern void rt_usb(unsigned len, const unsigned char *m);
@@ -287,6 +287,8 @@ static void digit(int d, int x, int top, int inv) {
 
 void rt_map(void *fb) {
     rt_fb = fb;
+    box(68, 57, 70, 57, 1);                                             /* D's box holds two: MODE, IN */
+    box(69, 58, 69, 58, 1);
     unsigned cx = rt_cx & 7u, cy = rt_cy & 7u;
     box(17 + 5 * (int)cx, 12, 21 + 5 * (int)cx, 58, 1);                /* the cursor's MIDI track */
     for (unsigned j = 0; j < 8; j++) {
@@ -331,7 +333,7 @@ int rt_yes(void) {
 }
 
 /* D (MODE) and F (OUT) turned by n choices, for the cursor's MIDI track */
-unsigned char rt_inview;                                       /* 1: knob D shows IN (FUNC + D) */
+unsigned char rt_inview;                                       /* 1: knob D shows IN (D pushed) */
 
 static void rt_label(void) {
     static const char mode[6] = "MODE", in[6] = "IN";
@@ -344,11 +346,13 @@ void rt_view_reset(void) { rt_inview = 0; rt_label(); }
 void rt_knob(unsigned knob, int n) {
     unsigned cx = rt_cx & 7u;
     if (knob == 3) {
-        unsigned in = U32(FUNC_HELD) != 0;
-        if (in != rt_inview) { rt_inview = (unsigned char)in; rt_label(); return; }  /* the first detent shows it */
-        if (in) { int v = INV(cx) + n; INV(cx) = v < 0 ? 0 : v > 1 ? 1 : v; }
+        if (rt_inview) { int v = INV(cx) + n; INV(cx) = v < 0 ? 0 : v > 1 ? 1 : v; }
         else { int v = MODE(cx) + n; MODE(cx) = v < 0 ? 0 : v > 1 ? 1 : v; }
     }
     else { int v = OUTV(cx) + n; OUTV(cx) = v < 0 ? 0 : v > 3 ? 3 : v; }
 }
+
+/* D pushed (222): its box shows the other of MODE / IN. */
+void rt_dpush(void) { rt_inview ^= 1u; rt_label(); }
+
 int rt_value(unsigned knob) { return knob == 3 ? (rt_inview ? INV(rt_cx & 7u) : MODE(rt_cx & 7u)) : OUTV(rt_cx & 7u); }

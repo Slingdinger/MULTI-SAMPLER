@@ -127,6 +127,11 @@ MODULE = Module(
                "the chromatic keyboard boxes every key held on a POLY track"),
         Detour(0x40044B5C, H("528ab5fc460d1725"), "multi", "mu_kbd_next",
                "the keyboard draw loop walks the POLY box list", pad_to=8),
+        Detour(0x4004d948, H("4e56ff6848d73cfc"), "multi", "mu_amp_draw",
+               "the main view's draw: on a MULTI track the AMP page reads ATK DEC SUS / VOL BAL REL (222)", pad_to=8),
+        Detour(0x4000cb9a, H("263c80001658"), "multi", "mu_dsp_hook",
+               "the frame builder after its record copy: a MULTI track's DSP record has no envelope, XVOL full "
+               "(its slot is MULTI's REL; 222)", pad_to=6),
         Detour(0x4000c458, H("733018002a41"), "multi", "mu_restore_type",
                "the lock restore at a trig reads a MULTI track's PLAYBACK values as FLEX's"),
         Detour(0x4009d7fe, H("75102207d281"), "multi", "mu_step_type_a",

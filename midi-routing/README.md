@@ -14,7 +14,7 @@ M1-M8 across, audio tracks T1-T8 down. A filled square is a route.
 | Arrows | Move the cursor: its MIDI track's column is inverted, its audio track's number boxed. It opens on the track you opened NOTE SETUP from. |
 | YES | Route or unroute the cell. With a CHAN / BANK / PROG / SBNK edit waiting, YES applies it, as stock. |
 | D: MODE | For the cursor's MIDI track. **LINK**: one note a track (chords; a note past the last free track takes the one sounding longest). **ALL**: every note on every routed track. |
-| FUNC + D: IN | For the cursor's MIDI track. **ON** (default): a keyboard on its CHAN (MIDI IN) plays its routed audio tracks, and stock's audio note-in ignores that channel (no track trigs, mutes or doubled notes). **OFF**: MIDI IN as stock. Turn D without FUNC to see MODE again. |
+| D pushed: IN | For the cursor's MIDI track; a small arrow under the value marks the box. **ON** (default): a keyboard on its CHAN (MIDI IN) plays its routed audio tracks, and stock's audio note-in ignores that channel (no track trigs, mutes or doubled notes). **OFF**: MIDI IN as stock. Push D again for MODE. |
 | F: OUT | Where the cursor's MIDI track's routed notes also go: **OFF**, **DIN**, **USB**, **BOTH**. |
 
 A new project starts with each MIDI track routed to its own audio track (M1 to T1 ... M8 to T8),

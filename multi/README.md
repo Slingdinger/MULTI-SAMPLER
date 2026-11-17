@@ -36,3 +36,22 @@ every voice its own pitch, the same sample.
   octaves.
 - Not with POLY MACHINE, OCTA303 or SYNTH MACHINE in the same build.
 - Measured under the emulator, not on a unit.
+
+## ADSR (OctaZach 222)
+
+Every note has its own envelope. On a MULTI track the AMP page reads **ATK DEC SUS / VOL BAL REL**:
+
+| Knob | What it does |
+|---|---|
+| ATK | attack time: 0 instant, up to ~4.8 s (0.3 v² + 1 ms) |
+| DEC | decay time from full down to SUS (same curve) |
+| SUS | the level a held note stays at (0-127) |
+| REL | release time after the key is let go (same curve). Stored in stock's XVOL slot; a MULTI track's DSP sees XVOL full |
+
+A held key sustains; letting go releases that note alone. A new note never restarts the others. The same
+note pressed again ends its old voice in ~2 ms (no two copies of one note). A note with no key (a
+sequencer trig straight on the track) releases when its decay ends. The track's own DSP envelope is
+held open on a MULTI track (ATK 0, HOLD and REL 127), so only the per-note envelopes shape the sound;
+the release that ends the track's live-played state waits until the last note has faded.
+Measured under the port: a held note rises over ATK, falls to SUS over DEC, holds, and fades over REL
+(40/40/64/40: ~0.5 s rise, half level, ~0.5 s fade). The REL knob draws with stock's XVOL dial.

@@ -61,6 +61,10 @@ A multisampler for the Octatrack MKI/MKII (OS 1.40C), built as two
   two MULTI tracks). A layer is another
   MULTI track with another set, ticked for the same MIDI track (MODE ALL).
 
+- **ADSR per note:** on a MULTI track the AMP page reads **ATK DEC SUS / VOL BAL REL**. A held key
+  sustains, letting go releases that note alone, and a new note never restarts the others (see
+  [multi/README.md](multi/README.md)).
+
 Memory: the set loads once into FLEX RAM (85.5 MB a project, shared) however many voices or tracks
 play it.
 
@@ -73,7 +77,7 @@ play it.
 | Arrows | Move the cursor: its MIDI track's column inverted, its audio track's number boxed. |
 | YES | Route / unroute that cell. With a CHAN / BANK / PROG / SBNK edit waiting, YES applies that instead (stock). |
 | D: MODE | **LINK**: one note a track (a MULTI track counts as eight). **ALL**: every note on every routed track. |
-| FUNC + D: IN | **ON** (default): a keyboard on the MIDI track's CHAN plays its routed audio tracks, and stock's audio note-in ignores that channel. **OFF**: MIDI IN as stock. D alone shows MODE again. |
+| D pushed: IN | A small arrow under MODE marks it. **ON** (default): a keyboard on the MIDI track's CHAN plays its routed audio tracks, and stock's audio note-in ignores that channel. **OFF**: MIDI IN as stock. Push D again for MODE. |
 | F: OUT | Where the routed notes also go: **OFF**, **DIN**, **USB**, **BOTH**. |
 
 **MIDI IN:** a note from outside on a routed MIDI track's CHAN (or on the auto channel in MIDI mode,

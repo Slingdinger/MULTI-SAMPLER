@@ -74,6 +74,8 @@ MODULE = Module(
     symbol_refs=tuple(SymbolRef(site, 0x40010bc8, "midirouting", "rt_send",
                                 "a MIDI-track note can play its routed audio tracks")
                       for site in NOTE_SITES) + (
+        SymbolRef(0x400bc5a4, 0x4004ae08, "midirouting", "rt_k_dpush",
+                  "NOTE SETUP D pushed: MODE's box shows IN, or MODE (222)"),
         SymbolRef(0x4000e054, 0x40001854, "midirouting", "rt_map_notes",
                   "MIDI IN note-on's channel map: an IN MIDI track's channel is no audio track's (221)"),
         SymbolRef(0x4000dbba, 0x40001854, "midirouting", "rt_map_notes",

@@ -98,6 +98,12 @@ rt_redraw:
     move.l %d0,0x46c7c72c
 9:  rts
 
+/* D pushed (key table 0x400bc5a4, stock 0x4004ae08): MODE's box shows IN, or MODE again (222). */
+    .global rt_k_dpush
+rt_k_dpush:
+    jsr rt_dpush
+    bra.s rt_redraw
+
 rt_k_yes:
     jsr rt_yes
     tst.l %d0
@@ -1568,29 +1574,45 @@ rt_map_fix:
 rt_map:
 	lea (-48,%sp),%sp
 	movem.l #31996,(%sp)
-	move.b rt_cx,%d5
-	move.b rt_cy,%d1
-	moveq #7,%d2
-	moveq #49,%d3
 	pea 1.w
+	move.l #1073816148,%a2
+	pea 6.w
+	moveq #49,%d3
+	pea 63.w
 	moveq #50,%d6
-	pea 51.w
-	move.l 60(%sp),%d0
+	move.l 64(%sp),%d0
 	clr.l %d7
-	move.w #48,%a3
-	lea (rt_s3),%a4
+	pea 6.w
+	pea 61.w
+	move.l %d0,-(%sp)
 	move.l %d0,rt_fb
-	and.l %d2,%d5
-	and.l %d1,%d2
-	move.w %d5,%d1
-	move.l %d2,%a5
-	mulu.w #5,%d1
-	move.l %d1,%a0
+	move.w #48,%a3
+	jsr (%a2)
+	pea 1.w
+	pea 5.w
+	pea 62.w
+	pea 5.w
+	pea 62.w
+	lea (rt_s3),%a4
+	move.l rt_fb,-(%sp)
+	jsr (%a2)
+	move.b rt_cx,%d5
+	move.b rt_cy,%d0
+	lea (48,%sp),%sp
+	moveq #7,%d1
+	pea 1.w
+	pea 51.w
+	and.l %d1,%d5
+	and.l %d0,%d1
+	move.w %d5,%d0
+	move.l %d1,%a5
+	mulu.w #5,%d0
+	move.l %d0,%a0
 	pea 14(%a0)
 	pea 5.w
 	pea 10(%a0)
-	move.l %d0,-(%sp)
-	jsr 1073816148
+	move.l rt_fb,-(%sp)
+	jsr (%a2)
 	lea (24,%sp),%sp
 .Lrt_316:
 	move.l %d7,%d4
@@ -1601,7 +1623,6 @@ rt_map:
 	cmp.l %d7,%a5
 	jeq .Lrt_321
 	move.b %d4,(%a4)
-	clr.b %d1
 	moveq #1,%d4
 	lsl.l %d7,%d4
 	move.w #11,%a2
@@ -1615,7 +1636,8 @@ rt_map:
 	move.l %d0,-(%sp)
 	move.l #1074505846,-(%sp)
 	clr.l %d2
-	move.b %d1,rt_s3+1
+	clr.b %d0
+	move.b %d0,rt_s3+1
 	jsr 1073821956
 	lea (36,%sp),%sp
 	lea rt_v,%a6
@@ -1642,8 +1664,8 @@ rt_map:
 	lea (24,%sp),%sp
 	addq.l #1,%d2
 	addq.l #5,%a2
-	moveq #8,%d0
-	cmp.l %d2,%d0
+	moveq #8,%d1
+	cmp.l %d2,%d1
 	jne .Lrt_315
 .Lrt_322:
 	move.l 44(%sp),%d7
@@ -1667,8 +1689,8 @@ rt_map:
 	lea (24,%sp),%sp
 	addq.l #1,%d2
 	addq.l #5,%a2
-	moveq #8,%d0
-	cmp.l %d2,%d0
+	moveq #8,%d1
+	cmp.l %d2,%d1
 	jne .Lrt_315
 	jra .Lrt_322
 .Lrt_321:
@@ -1681,7 +1703,7 @@ rt_map:
 	jsr 1073816148
 	move.w #11,%a2
 	move.b %d4,(%a4)
-	clr.b %d0
+	clr.b %d1
 	moveq #1,%d4
 	lsl.l %d7,%d4
 	move.l %a4,-(%sp)
@@ -1694,7 +1716,7 @@ rt_map:
 	clr.l %d2
 	move.l rt_fb,-(%sp)
 	move.l #1074505846,-(%sp)
-	move.b %d0,rt_s3+1
+	move.b %d1,rt_s3+1
 	jsr 1073821956
 	lea (60,%sp),%sp
 	lea rt_v,%a6
@@ -1864,97 +1886,89 @@ rt_view_reset:
 	.globl	rt_knob
 rt_knob:
 	move.b rt_cx,%d0
-	moveq #7,%d1
-	move.l %d3,-(%sp)
 	move.l %d2,-(%sp)
-	and.l %d1,%d0
-	moveq #3,%d1
-	cmp.l 12(%sp),%d1
-	jeq .Lrt_383
+	moveq #7,%d2
+	move.l 12(%sp),%d1
 	lea rt_v,%a0
-	moveq #3,%d1
+	and.l %d2,%d0
+	moveq #3,%d2
+	cmp.l 8(%sp),%d2
+	jeq .Lrt_377
 	move.l 64(%a0,%d0.l*4),%a0
-	move.l 16(%sp),%d0
-	add.l %d0,(%a0)
+	add.l %d1,(%a0)
 	move.l (%a0),%d0
+	moveq #3,%d1
 	cmp.l %d0,%d1
-	jlt .Lrt_384
-.Lrt_374:
+	jlt .Lrt_378
+.Lrt_371:
 	tst.l %d0
-	jlt .Lrt_385
-	move.l %d0,(%a0)
-.Lrt_363:
+	jlt .Lrt_379
 	move.l (%sp)+,%d2
-	move.l (%sp)+,%d3
+	move.l %d0,(%a0)
 	rts
-.Lrt_385:
+.Lrt_379:
+	move.l (%sp)+,%d2
 	clr.l %d0
 	move.l %d0,(%a0)
-	jra .Lrt_363
-.Lrt_384:
+	rts
+.Lrt_378:
+	move.l (%sp)+,%d2
 	moveq #3,%d0
 	move.l %d0,(%a0)
-	jra .Lrt_363
-.Lrt_383:
-	move.l 1187503398,%a0
-	mvz.b rt_inview,%d2
-	tst.l %a0
-	sne %d1
-	neg.l %d1
-	mvz.b %d1,%d3
-	cmp.l %d3,%d2
-	jne .Lrt_386
-	tst.l %a0
-	jeq .Lrt_369
-	lea rt_v,%a0
+	rts
+.Lrt_377:
+	tst.b rt_inview.l
+	jeq .Lrt_365
 	move.l 96(%a0,%d0.l*4),%a0
-	move.l 16(%sp),%d0
-	add.l %d0,(%a0)
-	move.l (%a0),%d0
-	tst.l %d0
-	jle .Lrt_374
-	moveq #1,%d0
-.Lrt_387:
-	move.l %d0,(%a0)
-	jra .Lrt_363
-.Lrt_369:
-	lea rt_v,%a0
-	move.l 32(%a0,%d0.l*4),%a0
-	move.l 16(%sp),%d1
 	add.l %d1,(%a0)
 	move.l (%a0),%d0
 	tst.l %d0
-	jle .Lrt_374
+	jle .Lrt_371
 	moveq #1,%d0
-	jra .Lrt_387
-.Lrt_386:
+.Lrt_380:
+	move.l (%sp)+,%d2
+	move.l %d0,(%a0)
+	rts
+.Lrt_365:
+	move.l 32(%a0,%d0.l*4),%a0
+	add.l %d1,(%a0)
+	move.l (%a0),%d0
+	tst.l %d0
+	jle .Lrt_371
+	moveq #1,%d0
+	jra .Lrt_380
+	.align	2
+	.globl	rt_dpush
+rt_dpush:
+	move.b rt_inview,%d0
+	moveq #1,%d1
+	move.l %d2,-(%sp)
+	eor.l %d0,%d1
+	mvz.b %d0,%d0
+	subq.l #1,%d0
 	move.b %d1,rt_inview
-	tst.l %a0
-	jeq .Lrt_376
+	tst.l %d0
+	jeq .Lrt_384
 	move.l #in.1,%d1
 	move.l #1074609801,%d2
 	sub.l %d1,%d2
 	move.l %d1,%a0
 	addq.l #6,%d1
-.Lrt_367:
+.Lrt_383:
 	move.b (%a0)+,%d0
 	lea (%a0,%d2.l),%a1
 	move.b %d0,(%a1)
 	cmp.l %a0,%d1
-	jeq .Lrt_363
-	move.b (%a0)+,%d0
-	lea (%a0,%d2.l),%a1
-	move.b %d0,(%a1)
-	cmp.l %a0,%d1
-	jne .Lrt_367
-	jra .Lrt_363
-.Lrt_376:
+	jne .Lrt_383
+	move.l (%sp)+,%d2
+	rts
+.Lrt_384:
 	move.l #mode.0,%d1
 	move.l #1074609801,%d2
 	sub.l %d1,%d2
 	move.l %d1,%a0
 	addq.l #6,%d1
-	jra .Lrt_367
+	jra .Lrt_383
 	.align	2
 	.globl	rt_value
 rt_value:

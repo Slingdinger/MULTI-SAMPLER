@@ -49,7 +49,7 @@
         .global mu_release_held
         .global mu_kbd_fill
         .global mu_kbd_next
-        .global mu_release_note
+        .global mu_release_note,mu_relpend
         .global voice_pointer
         .global mu_voice_selector
         .global mu_extra_voices
@@ -112,6 +112,30 @@ mu_release:
         .equ    STATE_SIZE, 40
         .equ    MAX_SOURCE_FRAMES, 64
         .equ    FETCH_FRAMES, 96            | >= 16 * 4.0 + a ratio's slack
+
+| MULTI ADSR (222). Detour 0x4004d948 (8 bytes: `link.w %fp,#-152` ; `movem.l %d2-%d7/%a2-%a5,(%sp)`), the
+| main view's draw (its page knobs at 0x4004e5..): the AMP page's labels as the active track's machine
+| wants them (mu_amp_ui, mu.c).
+        .global mu_amp_draw,mu_dsp_hook
+mu_amp_draw:
+        jsr     mu_amp_ui
+        link.w  %fp,#-152
+        movem.l %d2-%d7/%a2-%a5,(%sp)
+        jmp     (0x4004d950).l
+
+| Detour 0x4000cb9a (6 bytes: `move.l #0x80001658,%d3`), the frame builder just after its copy of the
+| tracks' parameter records (ping offset at 106(sp)): a MULTI track's record has no DSP envelope
+| (mu_dsp_amp, mu.c).
+mu_dsp_hook:
+        lea     -16(%sp),%sp
+        movem.l %d0-%d1/%a0-%a1,(%sp)
+        move.l  122(%sp),-(%sp)
+        jsr     mu_dsp_amp
+        addq.l  #4,%sp
+        movem.l (%sp),%d0-%d1/%a0-%a1
+        lea     16(%sp),%sp
+        move.l  #0x80001658,%d3
+        jmp     (0x4000cba0).l
 
 | d0 = track -> d0 = 1 when the current Part stores raw machine type 5.
 | d1/a0 are scratch; all other registers are preserved.
@@ -287,6 +311,9 @@ mu_voice_trigger:
         clr.b   (%a2,%d2.l)
         bsr.w   .pvt_set_primary_note
         bsr.w   .pvt_set_primary_shift
+        pea     255.w                    | MULTI ADSR (222): no voice moved
+        bsr.w   .pvt_env
+        addq.l  #4,%sp
         bra.w   .pvt_done
 .pvt_active:
 
@@ -318,6 +345,15 @@ mu_voice_trigger:
         lea     mu_extra_shift(%pc),%a2
         move.b  %d0,(%a2,%d1.l)
         bsr.w   .pvt_set_primary_shift
+        move.l  %d1,%d0                  | MULTI ADSR (222): the old primary's envelope to slot d1 - 7 t
+        move.l  %d2,-(%sp)
+        lsl.l   #3,%d2
+        sub.l   (%sp),%d2                | 7 t
+        sub.l   %d2,%d0                  | the extension slot 0..6
+        move.l  (%sp)+,%d2
+        move.l  %d0,-(%sp)
+        bsr.w   .pvt_env
+        addq.l  #4,%sp
 
 | The extension keeps the old primary's own increment, which the render
 | publishes for that voice alone.  Measured order within a frame (octemu,
@@ -384,6 +420,22 @@ mu_voice_trigger:
         move.b  %d0,(%a2,%d2.l)
         rts
 
+| mu_env_press(track d2, the primary's key, the slot at 4(sp)); keeps d1 a0 a2.
+.pvt_env:
+        lea     -8(%sp),%sp
+        movem.l %d1/%a0,(%sp)
+        move.l  12(%sp),-(%sp)
+        lea     mu_primary_note(%pc),%a1
+        moveq   #0,%d0
+        move.b  (%a1,%d2.l),%d0
+        move.l  %d0,-(%sp)
+        move.l  %d2,-(%sp)
+        jsr     mu_env_press
+        lea     12(%sp),%sp
+        movem.l (%sp),%d1/%a0
+        lea     8(%sp),%sp
+        rts
+
 .pvt_done:
         movem.l (%sp),%d0-%d2/%a0-%a2
         lea     24(%sp),%sp
@@ -413,6 +465,9 @@ mu_call:
         lea     (LANES).l,%a0
         tst.b   28(%a0,%d0.l)             | POLY is TSTR OFF only
         bne.w   .reset_mono
+        move.l  %d2,-(%sp)                | MULTI ADSR (222): ended voices stop, an owed release posts
+        jsr     mu_env_pre
+        addq.l  #4,%sp
         move.l  52(%a5),%d5               | rendered source frames, stereo
         beq.w   .mono
         cmpi.l  #MAX_SOURCE_FRAMES,%d5
@@ -474,9 +529,13 @@ mu_call:
         lea     mu_prim_ok(%pc),%a0
         moveq   #1,%d0
         move.b  %d0,(%a0,%d2.l)
-        tst.l   %d6
-        beq.s   .ext_start
+        clr.l   -(%sp)                    | MULTI ADSR (222): the primary's envelope, this chunk
+        move.l  %d2,-(%sp)
+        jsr     mu_env_step
+        addq.l  #8,%sp
         movea.l 40(%a5),%a0
+        cmpi.l  #65536,%d0
+        bcs.s   .scale_env
         move.l  %d5,%d0
         lsl.l   #1,%d0
         subq.l  #1,%d0
@@ -486,17 +545,43 @@ mu_call:
         move.l  %d1,(%a0)+
         subq.l  #1,%d0
         bpl.s   .scale
+        bra.s   .ext_start
+.scale_env:
+        move.l  %d7,-(%sp)
+        move.l  %d0,%d7
+        lsr.l   #1,%d7                    | the gain with the -6 dB, Q16
+        move.l  %d5,%d0
+        lsl.l   #1,%d0
+        subq.l  #1,%d0
+1:      move.l  (%a0),%d1
+        swap    %d1
+        ext.l   %d1
+        muls.l  %d7,%d1
+        move.l  %d1,(%a0)+
+        subq.l  #1,%d0
+        bpl.s   1b
+        move.l  (%sp)+,%d7
 .ext_start:
         moveq   #1,%d3
         moveq   #0,%d4                    | the extension's offset from a2
 .ext_loop:
         tst.b   (%a2,%d4.l)
-        beq.s   .ext_next
+        beq.w   .ext_next
+        move.l  %d3,-(%sp)                | MULTI ADSR (222): this voice's envelope, this chunk
+        move.l  %d2,-(%sp)
+        jsr     mu_env_step
+        addq.l  #8,%sp
+        tst.l   %d0
+        beq.w   .ext_next                 | silent: ends at the next chunk (mu_env_pre)
+        move.l  %d0,-(%sp)
         move.l  %d3,mu_voice_selector
         bsr.w   .render_ext
         clr.l   mu_voice_selector
+        move.l  (%sp)+,%d0
         movea.l 40(%a5),%a0
         lea     mu_scratch(%pc),%a1
+        cmpi.l  #65536,%d0
+        bcs.w   .mix_env
         move.l  %d5,%d0
         lsl.l   #1,%d0
         subq.l  #1,%d0
@@ -515,11 +600,36 @@ mu_call:
         subq.l  #1,%d0
         bpl.s   .mix
         move.l  (%sp)+,%d2
+        bra.s   .ext_next
+.mix_env:
+        lea     -8(%sp),%sp
+        movem.l %d2/%d7,(%sp)
+        move.l  %d0,%d7
+        lsr.l   #1,%d7                    | the gain with the -6 dB, Q16
+        move.l  %d5,%d0
+        lsl.l   #1,%d0
+        subq.l  #1,%d0
+2:      move.l  (%a1)+,%d1
+        swap    %d1
+        ext.l   %d1
+        muls.l  %d7,%d1
+        move.l  (%a0),%d2
+        add.l   %d1,%d2
+        bvc.s   3f
+        move.l  #0x7fff0000,%d2
+        tst.l   %d1
+        bpl.s   3f
+        move.l  #0x80000000,%d2
+3:      move.l  %d2,(%a0)+
+        subq.l  #1,%d0
+        bpl.s   2b
+        movem.l (%sp),%d2/%d7
+        lea     8(%sp),%sp
 .ext_next:
         addi.l  #VOICE_SIZE,%d4
         addq.l  #1,%d3
         cmpi.l  #EXTRA_PER_TRACK+1,%d3
-        bcs.s   .ext_loop
+        bcs.w   .ext_loop
         clr.l   mu_voice_selector
         bra.s   .done
 
@@ -1191,6 +1301,8 @@ mu_press_key:
         move.l  %d0,%d4
         move.l  %d1,%d3
         bsr.w   .hold_add
+        lea     mu_relpend(%pc),%a0      | a key again: no release owed (222)
+        clr.b   (%a0,%d4.l)
         lea     (PENDING_COMMANDS).l,%a0
 | A release alone still in the mailbox (the last key let go this very moment) and a key pressed now:
 | legato, the release is withdrawn and the key armed. Taken first, it ended the new key before it
@@ -1303,12 +1415,11 @@ mu_release_key:
         addq.l  #1,%d0
         cmpi.l  #HOLD_SLOTS,%d0
         bcs.s   .prk_any
-        lea     (PENDING_COMMANDS).l,%a0
-        move.l  (%a0,%d4.l*4),%d0
-        moveq   #CMD_RELEASE,%d1
-        or.l    %d1,%d0
-        move.l  %d0,(%a0,%d4.l*4)
+| MULTI ADSR (222): the release waits until every voice of the track has ended (mu_call posts it),
+| so the AMP release of the last notes is heard.
+        lea     mu_relpend(%pc),%a0
         moveq   #1,%d0
+        move.b  %d0,(%a0,%d4.l)
         bra.s   .prk_out
 .prk_busy:
         moveq   #0,%d0
@@ -1539,44 +1650,43 @@ mu_release_note:
         move.l  %d0,%d2
         move.l  %d1,%d3
 
-| The primary stops through stock's own stop routine: clearing only its
-| active byte left STATES+4, the voice generation counter and 0x4000672c's
-| bookkeeping behind, and the track never triggered again -- not from the
-| sequencer, not from a grid-record preview (measured under octemu, 22 Sep
-| 2026).  The UI task runs with the render idle, so the selector is 0 here
-| and mu_stop_voice passes the call straight to stock.
+| MULTI ADSR (222): a voice let go releases (mu_env_release); mu_call ends it when its envelope does.
+| The voice gives up its key here, so a new press of that key takes a new voice.
         lea     mu_primary_note(%pc),%a0
         cmp.b   (%a0,%d2.l),%d3
         bne.s   .prn_extra
-        move.l  %d2,-(%sp)
-        jsr     (STOCK_STOP).l
-        addq.l  #4,%sp
-        lea     mu_primary_note(%pc),%a0
         st      %d0
         move.b  %d0,(%a0,%d2.l)          | the voice no longer owns the key
+        clr.l   -(%sp)
+        move.l  %d2,-(%sp)
+        jsr     mu_env_release
+        addq.l  #8,%sp
 .prn_extra:
         move.l  %d2,%d0
         lsl.l   #3,%d0
         sub.l   %d2,%d0                  | first flat extension index
-        lea     mu_extra_note(%pc),%a0
-        lea     mu_extra_voices(%pc),%a1
-        moveq   #0,%d2
+        movea.l %d0,%a2
+        moveq   #0,%d0
 .prn_loop:
-        move.l  %d0,%a2
-        add.l   %d2,%a2
-        cmp.b   (%a0,%a2.l),%d3
-        bne.s   .prn_next
+        lea     mu_extra_note(%pc),%a0
         move.l  %a2,%d1
-        move.l  #VOICE_SIZE,%d0
-        mulu.l  %d0,%d1
-        clr.b   (%a1,%d1.l)
-        moveq   #-1,%d1
-        move.b  %d1,(%a0,%a2.l)          | the voice no longer owns the key
-        move.l  %a2,%d0
-        sub.l   %d2,%d0
+        add.l   %d0,%d1
+        cmp.b   (%a0,%d1.l),%d3
+        bne.s   .prn_next
+        movea.l %d3,%a1
+        moveq   #-1,%d3
+        move.b  %d3,(%a0,%d1.l)          | the voice no longer owns the key
+        move.l  %a1,%d3
+        move.l  %d0,-(%sp)
+        addq.l  #1,%d0
+        move.l  %d0,-(%sp)
+        move.l  %d2,-(%sp)
+        jsr     mu_env_release
+        addq.l  #8,%sp
+        move.l  (%sp)+,%d0
 .prn_next:
-        addq.l  #1,%d2
-        cmpi.l  #EXTRA_PER_TRACK,%d2
+        addq.l  #1,%d0
+        cmpi.l  #EXTRA_PER_TRACK,%d0
         bcs.s   .prn_loop
         movem.l (%sp),%d2-%d3/%a0-%a2
         lea     20(%sp),%sp
@@ -1661,6 +1771,8 @@ mu_held:
 mu_kbd:
         .zero   8*HOLD_SLOTS                | the keyboard draw's boxes, key + 1
 mu_kbd_end:
+mu_relpend:
+        .zero   8                           | a release owed once the track's voices end (222)
         .balign 4
 mu_extra_increment:
         .zero   224                         | 56 saved Q26 increments
@@ -2559,9 +2671,550 @@ mu_dbgname:
 	move.l %a0,%d0
 	lea (12,%sp),%sp
 	rts
+	.align	2
+	.globl	mu_env_press
+mu_env_press:
+	lea (-28,%sp),%sp
+	moveq #6,%d0
+	move.l 32(%sp),%d1
+	move.l 40(%sp),%a0
+	movem.l #31756,(%sp)
+	lsl.l #3,%d1
+	move.l 36(%sp),%d2
+	cmp.l %a0,%d0
+	jcc .Lmu_171
+	lea mu_env_lvl,%a1
+	lea mu_env_st,%a4
+	lea mu_env_note,%a3
+	lea mu_env_fast,%a2
+.Lmu_159:
+	cmp.l #255,%d2
+	jeq .Lmu_160
+	move.l %d1,%a0
+	move.l %d1,%a5
+	move.l %d1,%a6
+	add.l #mu_env_st+1,%a0
+	add.l #mu_env_note,%a5
+	add.l #mu_env_fast,%a6
+	moveq #1,%d0
+.Lmu_162:
+	tst.b (%a0)+
+	jeq .Lmu_161
+	mvz.b (%a5,%d0.l),%d3
+	cmp.l %d3,%d2
+	jeq .Lmu_174
+.Lmu_161:
+	addq.l #1,%d0
+	moveq #8,%d3
+	cmp.l %d0,%d3
+	jne .Lmu_162
+.Lmu_160:
+	moveq #1,%d0
+	clr.b %d3
+	move.b %d2,(%a3,%d1.l)
+	clr.l (%a1,%d1.l*4)
+	move.b %d0,(%a4,%d1.l)
+	move.b %d3,(%a2,%d1.l)
+	movem.l (%sp),#31756
+	lea (28,%sp),%sp
+	rts
+.Lmu_174:
+	moveq #1,%d3
+	move.b %d3,(%a6,%d0.l)
+	moveq #4,%d3
+	addq.l #1,%d0
+	move.b %d3,-1(%a0)
+	moveq #8,%d3
+	cmp.l %d0,%d3
+	jne .Lmu_162
+	jra .Lmu_160
+.Lmu_171:
+	lea 1(%a0,%d1.l),%a0
+	lea mu_env_st,%a4
+	lea (%a4,%d1.l),%a5
+	lea mu_env_note,%a3
+	lea mu_env_fast,%a2
+	lea mu_env_lvl,%a1
+	move.b (%a5),(%a4,%a0.l)
+	lea (%a3,%d1.l),%a5
+	move.b (%a5),(%a3,%a0.l)
+	lea (%a2,%d1.l),%a5
+	move.b (%a5),(%a2,%a0.l)
+	lea (%a1,%d1.l*4),%a5
+	move.l (%a5),(%a1,%a0.l*4)
+	jra .Lmu_159
+	.align	2
+	.globl	mu_env_release
+mu_env_release:
+	move.l 4(%sp),%d0
+	lea mu_env_st,%a0
+	lsl.l #3,%d0
+	add.l 8(%sp),%d0
+	tst.b (%a0,%d0.l)
+	jeq .Lmu_175
+	moveq #4,%d1
+	move.b %d1,(%a0,%d0.l)
+.Lmu_175:
+	rts
+	.align	2
+	.globl	mu_env_step
+mu_env_step:
+	lea (-28,%sp),%sp
+	move.l 32(%sp),%d1
+	movem.l #3196,(%sp)
+	moveq #72,%d4
+	moveq #127,%d2
+	muls.l %d1,%d4
+	moveq #127,%d5
+	lsl.l #3,%d1
+	lea mu_env_st,%a2
+	lea mu_env_lvl,%a1
+	move.l %d4,%a0
+	add.l #-2147481570,%a0
+	move.b (%a0),%d0
+	add.l 36(%sp),%d1
+	mvz.b (%a2,%d1.l),%d3
+	and.l %d2,%d0
+	swap %d0
+	clr.w %d0
+	move.l %d0,%d2
+	divu.l %d5,%d2
+	moveq #3,%d5
+	move.l %d2,%d0
+	cmp.l %d3,%d5
+	jeq .Lmu_187
+	move.l (%a1,%d1.l*4),%d5
+	moveq #3,%d6
+	cmp.l %d3,%d6
+	jcs .Lmu_181
+	moveq #1,%d6
+	cmp.l %d3,%d6
+	jeq .Lmu_182
+	subq.l #2,%d3
+	tst.l %d3
+	jne .Lmu_184
+	move.l %d4,%a3
+	add.l #-2147481571,%a3
+	move.b (%a3),%d3
+	moveq #127,%d4
+	move.l #65536,%a0
+	and.l %d4,%d3
+	tst.l %d3
+	jeq .Lmu_188
+	muls.l %d3,%d3
+	move.l #8268,%d6
+	muls.l %d6,%d3
+	move.l #10000,%d6
+	divu.l %d6,%d3
+	move.l %a0,%d4
+	addq.l #3,%d3
+	divu.l %d3,%d4
+	move.l %d4,%a0
+	addq.l #1,%a0
+.Lmu_188:
+	add.l %a0,%d2
+	cmp.l %d2,%d5
+	jhi .Lmu_189
+	lea mu_env_note,%a0
+	mvz.b (%a0,%d1.l),%d2
+	cmp.l #255,%d2
+	jeq .Lmu_206
+	moveq #3,%d2
+	move.b %d2,(%a2,%d1.l)
+.Lmu_187:
+	movem.l (%sp),#3196
+	move.l %d0,(%a1,%d1.l*4)
+	lea (28,%sp),%sp
+	rts
+.Lmu_181:
+	subq.l #4,%d3
+	tst.l %d3
+	jne .Lmu_184
+	lea mu_env_fast,%a0
+	move.l #13107,%d2
+	tst.b (%a0,%d1.l)
+	jne .Lmu_191
+	move.l %d4,%a0
+	add.l #-2147481567,%a0
+	move.b (%a0),%d0
+	moveq #127,%d3
+	moveq #1,%d2
+	swap %d2
+	and.l %d3,%d0
+	tst.l %d0
+	jeq .Lmu_191
+	muls.l %d0,%d0
+	move.l #8268,%d4
+	move.l #10000,%d6
+	muls.l %d4,%d0
+	divu.l %d6,%d0
+	moveq #1,%d2
+	swap %d2
+	addq.l #3,%d0
+	divu.l %d0,%d2
+	addq.l #1,%d2
+.Lmu_191:
+	cmp.l %d2,%d5
+	jhi .Lmu_192
+	clr.b %d0
+	move.b %d0,(%a2,%d1.l)
+.Lmu_184:
+	movem.l (%sp),#3196
+	clr.l %d0
+	move.l %d0,(%a1,%d1.l*4)
+	lea (28,%sp),%sp
+	rts
+.Lmu_182:
+	move.l %d4,%a0
+	add.l #-2147481572,%a0
+	move.b (%a0),%d2
+	moveq #127,%d3
+	moveq #1,%d0
+	swap %d0
+	and.l %d3,%d2
+	tst.l %d2
+	jeq .Lmu_186
+	muls.l %d2,%d2
+	move.l #8268,%d4
+	move.l #10000,%d6
+	muls.l %d4,%d2
+	divu.l %d6,%d2
+	moveq #1,%d0
+	swap %d0
+	addq.l #3,%d2
+	divu.l %d2,%d0
+	addq.l #1,%d0
+.Lmu_186:
+	add.l %d5,%d0
+	cmp.l #65536,%d0
+	jcs .Lmu_187
+	moveq #2,%d0
+	move.b %d0,(%a2,%d1.l)
+	moveq #1,%d0
+	swap %d0
+	movem.l (%sp),#3196
+	move.l %d0,(%a1,%d1.l*4)
+	lea (28,%sp),%sp
+	rts
+.Lmu_189:
+	move.l %d5,%d0
+	sub.l %a0,%d0
+	movem.l (%sp),#3196
+	move.l %d0,(%a1,%d1.l*4)
+	lea (28,%sp),%sp
+	rts
+.Lmu_192:
+	move.l %d5,%d0
+	sub.l %d2,%d0
+	movem.l (%sp),#3196
+	move.l %d0,(%a1,%d1.l*4)
+	lea (28,%sp),%sp
+	rts
+.Lmu_206:
+	moveq #4,%d2
+	move.b %d2,(%a2,%d1.l)
+	jra .Lmu_187
+	.align	2
+	.globl	mu_env_off
+mu_env_off:
+	move.l 4(%sp),%d0
+	move.l 8(%sp),%a1
+	lsl.l #3,%d0
+	move.l %d0,%a0
+	add.l #mu_env_st,%a0
+	tst.b (%a0,%a1.l)
+	seq %d0
+	mvs.b %d0,%d0
+	neg.l %d0
+	rts
+	.align	2
+	.globl	mu_amp_ui
+mu_amp_ui:
+	lea (-32,%sp),%sp
+	movem.l #7292,(%sp)
+	move.b 269161676,%d2
+	move.l 1187521622,%d0
+	move.b 269161679,%d1
+	move.l -2147483630,%a0
+	tst.l %a0
+	jne .Lmu_218
+	moveq #3,%d3
+	and.l %d3,%d1
+	moveq #7,%d3
+	and.l %d3,%d2
+	move.l %d0,%a0
+	move.l #6322,%d0
+	add.l #585122,%a0
+	muls.l %d0,%d1
+	moveq #5,%d0
+	add.l %d2,%a0
+	add.l %d1,%a0
+	move.b (%a0),%d3
+	eor.l %d0,%d3
+	tst.b %d3
+	seq %d3
+	neg.l %d3
+	mvz.b %d3,%d3
+	move.l %d3,%d0
+.Lmu_210:
+	mvz.b mu_amp_shown,%d1
+	cmp.l %d1,%d0
+	jeq .Lmu_209
+	move.b %d3,mu_amp_shown
+	lea fmt_at,%a4
+	clr.l %d4
+	lea fmt_stock,%a2
+	lea lab_at,%a3
+.Lmu_216:
+	move.l %d4,%d1
+	tst.l %d3
+	jeq .Lmu_212
+	add.l #lab_multi,%d1
+	move.l (%a3)+,%d2
+	sub.l %d1,%d2
+	move.l %d1,%a0
+	addq.l #6,%d1
+.Lmu_214:
+	lea (%a0,%d2.l),%a1
+	move.b (%a0)+,%d0
+	move.b %d0,(%a1)
+	cmp.l %d1,%a0
+	jne .Lmu_214
+	tst.l %d3
+	jne .Lmu_219
+	moveq #24,%d0
+	addq.l #4,%a2
+	move.l -4(%a2),%d1
+	move.l %d1,%d6
+	lsr.l %d0,%d6
+	move.l (%a4)+,%d0
+	move.l %d1,%d5
+	move.l %d0,%a0
+	move.l %d1,%d2
+	clr.w %d5
+	swap %d5
+	move.b %d6,(%a0)+
+	lsr.l #8,%d2
+	move.l %d0,%a1
+	addq.l #3,%d0
+	addq.l #2,%a1
+	addq.l #6,%d4
+	move.b %d5,(%a0)
+	move.l %d0,%a0
+	moveq #18,%d0
+	move.b %d2,(%a1)
+	move.b %d1,(%a0)
+	cmp.l %d4,%d0
+	jne .Lmu_216
+.Lmu_225:
+	tst.l %d3
+	jeq .Lmu_220
+	moveq #17,%d0
+	move.b %d0,1074608919
+.Lmu_209:
+	movem.l (%sp),#7292
+	lea (32,%sp),%sp
+	rts
+.Lmu_219:
+	clr.b %d6
+	move.l (%a4)+,%d0
+	move.l %d0,%a0
+	clr.b %d5
+	clr.b %d2
+	clr.b %d1
+	move.l %d0,%a1
+	addq.l #3,%d0
+	addq.l #2,%a1
+	addq.l #4,%a2
+	addq.l #6,%d4
+	move.b %d6,(%a0)+
+	move.b %d5,(%a0)
+	move.l %d0,%a0
+	moveq #18,%d0
+	move.b %d2,(%a1)
+	move.b %d1,(%a0)
+	cmp.l %d4,%d0
+	jne .Lmu_216
+	jra .Lmu_225
+.Lmu_212:
+	add.l #lab_stock,%d1
+	move.l (%a3)+,%d2
+	sub.l %d1,%d2
+	move.l %d1,%a0
+	addq.l #6,%d1
+	jra .Lmu_214
+.Lmu_218:
+	clr.l %d0
+	clr.l %d3
+	jra .Lmu_210
+.Lmu_220:
+	moveq #-127,%d0
+	move.b %d0,1074608919
+	jra .Lmu_209
+	.align	2
+	.globl	mu_dsp_amp
+mu_dsp_amp:
+	move.l %d2,-(%sp)
+	moveq #3,%d2
+	move.l 1187521622,%a1
+	move.b 269161679,%d0
+	move.l 8(%sp),%d1
+	move.l %d1,%a0
+	add.l #-2147482864,%d1
+	add.l #-2147483376,%a0
+	and.l %d2,%d0
+	move.l #6322,%d2
+	muls.l %d2,%d0
+	add.l %d0,%a1
+	add.l #585122,%a1
+.Lmu_228:
+	move.b (%a1),%d0
+	addq.l #1,%a1
+	mvz.b %d0,%d0
+	subq.l #5,%d0
+	tst.l %d0
+	jne .Lmu_227
+	move.w #32512,%d0
+	clr.w (%a0)
+	move.w %d0,2(%a0)
+	move.w %d0,4(%a0)
+	move.w %d0,10(%a0)
+.Lmu_227:
+	lea (64,%a0),%a0
+	cmp.l %a0,%d1
+	jne .Lmu_228
+	move.l (%sp)+,%d2
+	rts
+	.align	2
+	.globl	mu_env_pre
+mu_env_pre:
+	lea (-12,%sp),%sp
+	movem.l #28,(%sp)
+	move.l 16(%sp),%d3
+	move.l #168,%d0
+	move.l %d3,%d2
+	lsl.l #3,%d2
+	muls.l %d3,%d0
+	move.l %d0,%a0
+	add.l #-2147464744,%a0
+	move.b (%a0),%d0
+	jeq .Lmu_233
+	lea mu_env_st,%a0
+	tst.b (%a0,%d2.l)
+	jne .Lmu_239
+	move.l %d3,-(%sp)
+	jsr 1073768480
+	addq.l #4,%sp
+.Lmu_233:
+	move.l #1176,%d1
+	clr.l %d4
+	muls.l %d3,%d1
+	move.l %d2,%a1
+	moveq #1,%d0
+	add.l #mu_env_st,%a1
+	lea mu_extra_voices,%a0
+.Lmu_237:
+	move.b (%a0,%d1.l),%d2
+	jeq .Lmu_236
+	tst.b (%a1,%d0.l)
+	jne .Lmu_240
+	clr.b %d2
+	move.b %d2,(%a0,%d1.l)
+.Lmu_236:
+	addq.l #1,%d0
+	add.l #168,%d1
+	moveq #8,%d2
+	cmp.l %d0,%d2
+	jne .Lmu_237
+.Lmu_251:
+	tst.l %d4
+	jeq .Lmu_250
+.Lmu_232:
+	movem.l (%sp),#28
+	lea (12,%sp),%sp
+	rts
+.Lmu_250:
+	lea mu_relpend,%a0
+	tst.b (%a0,%d3.l)
+	jeq .Lmu_232
+	clr.b %d1
+	move.l %d3,%d0
+	add.l #296878293,%d0
+	lsl.l #2,%d0
+	moveq #64,%d2
+	move.b %d1,(%a0,%d3.l)
+	move.l %d0,%a0
+	move.l (%a0),%d0
+	or.l %d2,%d0
+	movem.l (%sp),#28
+	move.l %d0,(%a0)
+	lea (12,%sp),%sp
+	rts
+.Lmu_239:
+	move.l #1176,%d1
+	moveq #1,%d4
+	move.l %d2,%a1
+	moveq #1,%d0
+	muls.l %d3,%d1
+	add.l #mu_env_st,%a1
+	lea mu_extra_voices,%a0
+	jra .Lmu_237
+.Lmu_240:
+	moveq #1,%d4
+	addq.l #1,%d0
+	add.l #168,%d1
+	moveq #8,%d2
+	cmp.l %d0,%d2
+	jne .Lmu_237
+	jra .Lmu_251
 mu_pc0:
 	.string	"\t\013"
 	.ascii	"\002\004\005\007"
+	.globl	mu_amp_shown
+mu_amp_shown:
+	.fill	1,1,0
+	.align	2
+fmt_stock:
+	.long	1073984464
+	.long	1073984520
+	.long	1073984644
+	.align	2
+fmt_at:
+	.long	1074608726
+	.long	1074608730
+	.long	1074608742
+	.align	2
+lab_at:
+	.long	1074608548
+	.long	1074608554
+	.long	1074608572
+lab_stock:
+	.string	"HOLD"
+	.fill	1,1,0
+	.string	"REL"
+	.fill	2,1,0
+	.string	"XVOL"
+	.fill	1,1,0
+lab_multi:
+	.string	"DEC"
+	.fill	2,1,0
+	.string	"SUS"
+	.fill	2,1,0
+	.string	"REL"
+	.fill	2,1,0
+	.globl	mu_env_fast
+mu_env_fast:
+	.fill	64,1,0
+	.globl	mu_env_note
+mu_env_note:
+	.fill	64,1,0
+	.globl	mu_env_st
+mu_env_st:
+	.fill	64,1,0
+	.globl	mu_env_lvl
+	.align	2
+mu_env_lvl:
+	.fill	256,1,0
 	.balign 1
 mu_dbuf:
 	.fill 24,1,0
