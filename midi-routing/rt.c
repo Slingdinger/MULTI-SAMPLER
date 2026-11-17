@@ -192,38 +192,67 @@ static int rt_out(unsigned src, unsigned len, const unsigned char *m) {
     }
 }
 
+/* A note-on for MIDI track t (routed: TRKS(t) not 0): plays its audio tracks. */
+static void rt_on_note(unsigned t, unsigned ch, unsigned p) {
+    unsigned mask = (unsigned)TRKS(t) & 255u, idx = ch * 128u + p;
+    if (rt_on[idx])                                                     /* the same note again */
+        for (unsigned k = 0; k < 8; k++) if (rt_on[idx] >> k & 1) rt_stop(k, idx);
+    if (MODE(t) == 0) {
+        for (unsigned k = 0; k < 8; k++) if (mask >> k & 1) rt_play(k, p, ch, t);
+    } else {                             /* SPRD: the first routed track with a free voice, else the oldest */
+        unsigned best = 8, age = 0xffffffffu;
+        for (unsigned k = 0; k < 8 && best == 8; k++)
+            if ((mask >> k & 1) && rt_held[k] < (rt_multi(k) ? 8u : 1u)) best = k;
+        if (best == 8)
+            for (unsigned k = 0; k < 8; k++)
+                if ((mask >> k & 1) && rt_age[k] < age) { age = rt_age[k]; best = k; }
+        if (best < 8) rt_play(best, p, ch, t);
+    }
+}
+
+/* A note-off (or note-on velocity 0) on (ch, p): every audio track it plays stops. -> its source MIDI
+ * track, or -1 when it plays none. */
+static int rt_off_note(unsigned ch, unsigned p) {
+    unsigned idx = ch * 128u + p, on = rt_on[idx];
+    if (!on) return -1;
+    for (unsigned k = 0; k < 8; k++) if (on >> k & 1) rt_stop(k, idx);
+    return rt_osrc[idx];
+}
+
 /* m = (status, note, velocity); ret = the producer's return address (the sequencer's two note-on
  * sites and the live note-on); t = its MIDI track. 1: the stock sender doesn't send it. */
 int rt_route(unsigned ret, unsigned t, unsigned len, const unsigned char *m) {
     if (len != 3) return 0;
-    unsigned st = m[0] & 0xf0u, ch = m[0] & 15u, p = m[1] & 127u, idx = ch * 128u + p;
+    unsigned st = m[0] & 0xf0u, ch = m[0] & 15u, p = m[1] & 127u;
     if (st == 0x90u && m[2]) {
         if ((ret != 0x4009fbb2u && ret != 0x4009fcfau && ret != 0x4009ea9au) || t > 7) return 0;
-        unsigned mask = (unsigned)TRKS(t) & 255u;
-        if (!mask) return 0;
-        if (rt_on[idx])                                                 /* the same note again */
-            for (unsigned k = 0; k < 8; k++) if (rt_on[idx] >> k & 1) rt_stop(k, idx);
-        if (MODE(t) == 0) {
-            for (unsigned k = 0; k < 8; k++) if (mask >> k & 1) rt_play(k, p, ch, t);
-        } else {                         /* SPRD: the first routed track with a free voice, else the oldest */
-            unsigned best = 8, age = 0xffffffffu;
-            for (unsigned k = 0; k < 8 && best == 8; k++)
-                if ((mask >> k & 1) && rt_held[k] < (rt_multi(k) ? 8u : 1u)) best = k;
-            if (best == 8)
-                for (unsigned k = 0; k < 8; k++)
-                    if ((mask >> k & 1) && rt_age[k] < age) { age = rt_age[k]; best = k; }
-            if (best < 8) rt_play(best, p, ch, t);
-        }
+        if (!((unsigned)TRKS(t) & 255u)) return 0;
+        rt_on_note(t, ch, p);
         return rt_out(t, len, m);
     }
     if (st == 0x80u || st == 0x90u) {
-        unsigned on = rt_on[idx];
-        if (!on) return 0;
-        unsigned src = rt_osrc[idx];
-        for (unsigned k = 0; k < 8; k++) if (on >> k & 1) rt_stop(k, idx);
-        return rt_out(src, len, m);
+        int src = rt_off_note(ch, p);
+        if (src < 0) return 0;
+        return rt_out((unsigned)src, len, m);
     }
     return 0;
+}
+
+/* MIDI IN (OctaZach 220): a note from outside on a MIDI track's CHAN -- or on the auto channel in MIDI
+ * mode, for the active MIDI track -- plays that track's routed audio tracks, as its own notes do. Called
+ * at the entry of stock's note-on (0x4000e018) and note-off (0x4000db98) with the message; stock then
+ * goes on as before (the thru to MIDI OUT, live recording). Runs in the MIDI task, as stock's own
+ * chromatic note-in does. MIDI SETUP's CHAN: Part +0x8f262 + 36 t, 0 off, else channel + 1. */
+void rt_midi_in(const unsigned char *m) {
+    unsigned st = m[0] & 0xf0u, ch = m[0] & 15u, p = m[1] & 127u;
+    if (st != 0x90u && st != 0x80u) return;
+    if (st == 0x80u || !m[2]) { rt_off_note(ch, p); return; }
+    unsigned part = PART(), act = 8;
+    if (U32(0x80000012u) && U8(0x80000047u) == ch) act = U8(0x80000000u) & 7u;
+    for (unsigned t = 0; t < 8; t++) {
+        if (t != act && U8(part + 0x8f262u + 36u * t) != ch + 1u) continue;
+        if ((unsigned)TRKS(t) & 255u) rt_on_note(t, ch, p);
+    }
 }
 
 /* ---- NOTE SETUP: the routing map in the left box (window x = screen x - 7, y = 63 - screen row) */

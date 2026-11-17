@@ -60,6 +60,11 @@ MODULE = Module(
                "NOTE SETUP's D / F values: the cursor's MIDI track's MODE / OUT"),
         Detour(0x4003678a, H("4cd77cfc4fef0034"), "midirouting", "rt_draw",
                "the end of NOTE SETUP's draw: the routing map in the left box", pad_to=8),
+        Detour(0x4000e018, H("4fefffd448d77cfc"), "midirouting", "rt_in_on",
+               "MIDI IN note-on: a note on a routed MIDI track's CHAN (or the auto channel in MIDI mode) "
+               "plays its audio tracks (220)", pad_to=8),
+        Detour(0x4000db98, H("4fefffd448d77cfc"), "midirouting", "rt_in_off",
+               "MIDI IN note-off: the routed note stops (220)", pad_to=8),
         Detour(0x4000b9a2, H("20309c0044c0662a"), "midirouting", "rt_seqtrig",
                "a linked pair: a sound-generator audio track's own trigs carry locks only", pad_to=8),
     ),

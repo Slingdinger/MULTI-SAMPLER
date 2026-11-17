@@ -25,7 +25,7 @@ A multisampler for the Octatrack MKI/MKII (OS 1.40C), built as two
 | 3 | Audio track, **FUNC + SRC** | Pick **MULTI**, YES. Press **RIGHT** for the `<<FLEX` slot list, pick any file of the set, YES. |
 | 4 | Same page | **LOOP** and **TSTR** off. |
 | 5 | MIDI track, **FUNC + SRC** | In NOTE SETUP's map, arrows to the audio track's row, **YES**. **D: MODE ALL** for one MULTI track. |
-| 6 | Play | The MIDI track's trigs, CHROMATIC keys, CHORDS — or the audio track's own CHROMATIC keys. |
+| 6 | Play | The MIDI track's trigs, CHROMATIC keys, CHORDS, an external keyboard on the MIDI track's CHAN — or the audio track's own CHROMATIC keys. |
 
 ![The machine list with MULTI](images/01-machine-list.png)
 
@@ -74,6 +74,11 @@ play it.
 | YES | Route / unroute that cell. With a CHAN / BANK / PROG / SBNK edit waiting, YES applies that instead (stock). |
 | D: MODE | **SPRD**: one note a track (a MULTI track counts as eight). **ALL**: every note on every routed track. |
 | F: OUT | Where the routed notes also go: **OFF**, **DIN**, **USB**, **BOTH**. |
+
+**MIDI IN:** a note from outside on a routed MIDI track's CHAN (or on the auto channel in MIDI mode,
+for the active MIDI track) plays its audio tracks too, over the whole note range. Stock still passes
+it on to MIDI OUT as before. Keep the keyboard off an audio track's own channel with AUDIO NOTE IN on,
+or notes 72-96 play twice.
 
 A new project starts with M1 → T1 … M8 → T8 and OUT BOTH (external gear still plays); untick a cell
 to stop a route. A MIDI track needs a CHAN for its notes to play. Unrouted MIDI tracks are stock.
