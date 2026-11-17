@@ -54,4 +54,4 @@ sequencer trig straight on the track) releases when its decay ends. The track's 
 held open on a MULTI track (ATK 0, HOLD and REL 127), so only the per-note envelopes shape the sound;
 the release that ends the track's live-played state waits until the last note has faded.
 Measured under the port: a held note rises over ATK, falls to SUS over DEC, holds, and fades over REL
-(40/40/64/40: ~0.5 s rise, half level, ~0.5 s fade). The REL knob draws with stock's XVOL dial.
+(40/40/64/40: ~0.5 s rise, half level, ~0.5 s fade).

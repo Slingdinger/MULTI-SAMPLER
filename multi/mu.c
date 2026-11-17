@@ -266,6 +266,11 @@ void mu_amp_ui(void) {
     unsigned h = m ? 0x40032814u : 0x40032ba4u;
     U8(0x400d3ac6u) = (unsigned char)(h >> 24); U8(0x400d3ac7u) = (unsigned char)(h >> 16);
     U8(0x400d3ac8u) = (unsigned char)(h >> 8); U8(0x400d3ac9u) = (unsigned char)h;
+    /* p5's widget (E+0xfa): stock's XVOL dial 0x400475f8 (striped) on stock tracks, the plain knob
+     * (0: the default) on MULTI */
+    unsigned w = m ? 0u : 0x400475f8u;
+    U8(0x400d3a96u) = (unsigned char)(w >> 24); U8(0x400d3a97u) = (unsigned char)(w >> 16);
+    U8(0x400d3a98u) = (unsigned char)(w >> 8); U8(0x400d3a99u) = (unsigned char)w;
 }
 
 /* After the frame builder's copy (0x4000cb9a): a MULTI track's DSP record shows the DSP no envelope of
