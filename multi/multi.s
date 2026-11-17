@@ -2937,7 +2937,7 @@ mu_amp_ui:
 	move.b 269161679,%d1
 	move.l -2147483630,%a0
 	tst.l %a0
-	jne .Lmu_218
+	jne .Lmu_219
 	moveq #3,%d3
 	and.l %d3,%d1
 	moveq #7,%d3
@@ -2946,11 +2946,11 @@ mu_amp_ui:
 	move.l #6322,%d0
 	add.l #585122,%a0
 	muls.l %d0,%d1
-	moveq #5,%d0
 	add.l %d2,%a0
+	moveq #5,%d2
 	add.l %d1,%a0
 	move.b (%a0),%d3
-	eor.l %d0,%d3
+	eor.l %d2,%d3
 	tst.b %d3
 	seq %d3
 	neg.l %d3
@@ -2981,7 +2981,7 @@ mu_amp_ui:
 	cmp.l %d1,%a0
 	jne .Lmu_214
 	tst.l %d3
-	jne .Lmu_219
+	jne .Lmu_220
 	moveq #24,%d0
 	addq.l #4,%a2
 	move.l -4(%a2),%d1
@@ -3008,14 +3008,22 @@ mu_amp_ui:
 	jne .Lmu_216
 .Lmu_225:
 	tst.l %d3
-	jeq .Lmu_220
-	moveq #17,%d0
-	move.b %d0,1074608919
+	jeq .Lmu_217
+	moveq #17,%d2
+	moveq #3,%d3
+	moveq #40,%d1
+	moveq #20,%d0
+	move.b %d2,1074608919
+	moveq #64,%d2
+	move.b %d2,1074608838
+	move.b %d3,1074608839
+	move.b %d1,1074608840
+	move.b %d0,1074608841
 .Lmu_209:
 	movem.l (%sp),#7292
 	lea (32,%sp),%sp
 	rts
-.Lmu_219:
+.Lmu_220:
 	clr.b %d6
 	move.l (%a4)+,%d0
 	move.l %d0,%a0
@@ -3043,13 +3051,21 @@ mu_amp_ui:
 	move.l %d1,%a0
 	addq.l #6,%d1
 	jra .Lmu_214
-.Lmu_218:
+.Lmu_219:
 	clr.l %d0
 	clr.l %d3
 	jra .Lmu_210
-.Lmu_220:
-	moveq #-127,%d0
-	move.b %d0,1074608919
+.Lmu_217:
+	moveq #-127,%d3
+	moveq #64,%d2
+	moveq #43,%d1
+	moveq #-92,%d0
+	move.b %d3,1074608919
+	moveq #3,%d3
+	move.b %d2,1074608838
+	move.b %d3,1074608839
+	move.b %d1,1074608840
+	move.b %d0,1074608841
 	jra .Lmu_209
 	.align	2
 	.globl	mu_dsp_amp

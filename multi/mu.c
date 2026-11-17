@@ -261,6 +261,11 @@ void mu_amp_ui(void) {
         U8(fmt_at[i] + 2u) = (unsigned char)(f >> 8); U8(fmt_at[i] + 3u) = (unsigned char)f;
     }
     U8(0x400d3b17u) = m ? 0x11u : 0x81u;          /* p5's nibble: 1 drawn, 8 (stock) scene-only */
+    /* p5's knob handler (E+0x12a, E = 0x400d3988): stock's XVOL handler 0x40032ba4 does not step 0-127;
+     * ATK's 0x40032814 does */
+    unsigned h = m ? 0x40032814u : 0x40032ba4u;
+    U8(0x400d3ac6u) = (unsigned char)(h >> 24); U8(0x400d3ac7u) = (unsigned char)(h >> 16);
+    U8(0x400d3ac8u) = (unsigned char)(h >> 8); U8(0x400d3ac9u) = (unsigned char)h;
 }
 
 /* After the frame builder's copy (0x4000cb9a): a MULTI track's DSP record shows the DSP no envelope of
