@@ -1992,6 +1992,142 @@ rt_value:
 	move.l 32(%a0,%d0.l*4),%a0
 	move.l (%a0),%d0
 	rts
+	.align	2
+	.globl	rt_ctl_poll
+rt_ctl_poll:
+	move.l -2147483630,%d0
+	lea (-28,%sp),%sp
+	movem.l #1276,(%sp)
+	tst.l %d0
+	jne .Lrt_395
+	move.b 269161676,%d6
+	move.l 1175262852,%d4
+	moveq #4,%d0
+	cmp.l %d4,%d0
+	jcs .Lrt_395
+	jsr 1073946408
+	tst.l %d0
+	jeq .Lrt_395
+	move.l 1187521622,%a2
+	moveq #3,%d3
+	move.b -2147483645,%d1
+	moveq #7,%d5
+	add.l #585122,%a2
+	and.l %d6,%d5
+	moveq #7,%d7
+	move.l %d0,%a0
+	move.l %d0,%a1
+	lea (22,%a0),%a0
+	lea (58,%a1),%a1
+	move.l %d0,%d2
+	and.l %d3,%d1
+	move.l #6322,%d3
+	add.l %d5,%a2
+	move.l %d5,%d6
+	muls.l %d3,%d1
+	add.l %d1,%a2
+	move.b (%a2),%d1
+	and.l %d1,%d7
+	move.l %d7,%a2
+.Lrt_399:
+	move.l %d2,%d1
+	lsl.l #5,%d1
+	mvz.b (%a0)+,%d3
+	sub.l %d2,%d1
+	move.l %d3,%d2
+	add.l %d1,%d2
+	cmp.l %a0,%a1
+	jne .Lrt_399
+	move.l %d4,%d1
+	move.l %a2,%d3
+	lsl.l #3,%d1
+	lsl.l #6,%d3
+	or.l %d5,%d1
+	or.l %d3,%d1
+	addq.l #1,%d1
+	cmp.l rt_cl_key.l,%d1
+	jeq .Lrt_415
+	moveq #1,%d3
+	move.b %d4,rt_cl_msg+6
+	move.b %d6,rt_cl_msg+5
+	move.b %d7,rt_cl_msg+7
+	move.l %d1,rt_cl_key
+	move.l #-260223142,%d1
+	move.l %d0,%a1
+	moveq #8,%d6
+	move.l %d2,rt_cl_sum
+	move.l #rt_cl_msg,%d7
+	move.l %d1,rt_cl_msg
+	sub.l #rt_cl_msg+8,%a1
+	move.b %d3,rt_cl_msg+4
+	move.l #rt_cl_msg+13,%d3
+.Lrt_403:
+	move.l %d3,%a0
+	subq.l #5,%a0
+.Lrt_402:
+	move.b 22(%a0,%a1.l),%d2
+	moveq #94,%d0
+	mvz.b %d2,%d1
+	add.l #-32,%d1
+	cmp.l %d1,%d0
+	jcc .Lrt_401
+	moveq #32,%d2
+.Lrt_401:
+	move.b %d2,(%a0)+
+	cmp.l %a0,%d3
+	jne .Lrt_402
+	move.l %a0,%d3
+	addq.l #5,%d6
+	addq.l #5,%d3
+	addq.l #1,%a1
+	moveq #38,%d1
+	cmp.l %d6,%d1
+	jne .Lrt_403
+	moveq #6,%d2
+	muls.l %d2,%d4
+	mulu.w #72,%d5
+	lea rt_cl_msg+38,%a0
+	move.l #rt_cl_msg+44,%d1
+	move.l %d4,%a1
+	add.l #-2147481584,%a1
+	sub.l %d7,%a1
+	lea -38(%a1,%d5.l),%a2
+.Lrt_404:
+	lea (%a2,%a0.l),%a1
+	moveq #127,%d3
+	move.b (%a1),%d0
+	and.l %d3,%d0
+	move.b %d0,(%a0)+
+	cmp.l %d1,%a0
+	jne .Lrt_404
+	moveq #-9,%d0
+	move.l %d7,-(%sp)
+	pea 45.w
+	move.b %d0,rt_cl_msg+44
+	jsr rt_usb
+	addq.l #8,%sp
+.Lrt_395:
+	movem.l (%sp),#1276
+	lea (28,%sp),%sp
+	rts
+.Lrt_415:
+	cmp.l rt_cl_sum.l,%d2
+	jeq .Lrt_395
+	moveq #1,%d3
+	move.b %d6,rt_cl_msg+5
+	move.b %d7,rt_cl_msg+7
+	move.l %d1,rt_cl_key
+	move.l #-260223142,%d1
+	move.l %d0,%a1
+	moveq #8,%d6
+	move.b %d4,rt_cl_msg+6
+	move.l %d2,rt_cl_sum
+	move.l #rt_cl_msg,%d7
+	move.l %d1,rt_cl_msg
+	sub.l #rt_cl_msg+8,%a1
+	move.b %d3,rt_cl_msg+4
+	move.l #rt_cl_msg+13,%d3
+	jra .Lrt_403
 mode.0:
 	.string	"MODE"
 	.fill	1,1,0
@@ -2007,6 +2143,18 @@ rt_s3:
 rt_pc4:
 	.string	"\t\013"
 	.ascii	"\002\004\005\007"
+	.globl	rt_cl_msg
+	.align	4
+rt_cl_msg:
+	.fill	45,1,0
+	.globl	rt_cl_sum
+	.align	2
+rt_cl_sum:
+	.fill	4,1,0
+	.globl	rt_cl_key
+	.align	2
+rt_cl_key:
+	.fill	4,1,0
 	.globl	rt_inview
 rt_inview:
 	.fill	1,1,0

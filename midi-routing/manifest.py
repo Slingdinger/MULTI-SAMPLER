@@ -47,7 +47,8 @@ MODULE = Module(
                ("MIDI LOOPBACK", "the same MIDI-track sender operands"),
                ("CHORD SPREAD", "the same MIDI-track sender operands and f3_page_send"),
                ("MIDI FOLLOW", "NOTE SETUP's D slot and its value draw")),
-    linked=(Linked("midirouting", "modules/midi-routing/rt.s", cpu="54455", dram=True),),
+    linked=(Linked("midirouting", "modules/midi-routing/rt.s", cpu="54455", dram=True,
+                   boot_mutable=(("rt_cl_key", 4), ("rt_cl_sum", 4), ("rt_cl_msg", 45))),),
     pokes=(
         Poke(0x400d3e8a, b"----\0\0", b"MODE\0\0", "NOTE SETUP D label"),
         Poke(0x400d3e96, b"----\0\0", b"OUT\0\0\0", "NOTE SETUP F label"),

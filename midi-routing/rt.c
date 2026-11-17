@@ -356,3 +356,37 @@ void rt_knob(unsigned knob, int n) {
 void rt_dpush(void) { rt_inview ^= 1u; rt_label(); }
 
 int rt_value(unsigned knob) { return knob == 3 ? (rt_inview ? INV(rt_cx & 7u) : MODE(rt_cx & 7u)) : OUTV(rt_cx & 7u); }
+
+/* ---- CONTROLLER LINK (OctaZach 225): the audio page in view, told over USB for a controller bridge
+ * (Novation-SL-MKIII-Hacks' ot-mirror). Called at the main view's draw (MULTI's mu_amp_draw, weak):
+ * when the UI track, its page, the page's descriptor or its labels change, one SysEx on USB only:
+ *   F0 7D 4F 5A 01 <track 0-7> <page 0-4> <machine 0-5> 6 x <label, 5 chars> 6 x <value> F7
+ * 0x7D is the non-commercial manufacturer ID. Page 0 PLAYBACK, 1 LFO, 2 AMP, 3 FX1, 4 FX2 (the main
+ * view's page, 0x460d1684); the page's descriptor from 0x40031f28 (the knob handler's), labels at +0x16,
+ * 6 bytes each; values from the live lane 0x80000810 + 72 t + 6 page + k (locks as they sound). */
+unsigned rt_cl_key, rt_cl_sum;                 /* boot zeroed (boot_mutable); key 0 = nothing sent */
+unsigned char rt_cl_msg[45];
+void rt_ctl_poll(void) {
+    if (U32(0x80000012u)) return;                                       /* MIDI mode: audio pages only */
+    unsigned t = U8(0x100b14ccu) & 7u, pg = U32(0x460d1684u);
+    if (pg > 4u) return;
+    const unsigned char *d = (const unsigned char *)((unsigned (*)(void))0x40031f28u)();   /* in d0 (stock) */
+    if (!d) return;
+    unsigned mach = U8(PART() + 0x8eda2u + t) & 7u, sum = (unsigned)d;
+    for (unsigned i = 0; i < 36; i++) sum = sum * 31u + d[0x16 + i];
+    unsigned key = 1u + (t | pg << 3 | mach << 6);
+    if (key == rt_cl_key && sum == rt_cl_sum) return;
+    rt_cl_key = key; rt_cl_sum = sum;
+    unsigned char *m = rt_cl_msg;
+    unsigned n = 0;
+    m[n++] = 0xf0; m[n++] = 0x7d; m[n++] = 0x4f; m[n++] = 0x5a; m[n++] = 0x01;
+    m[n++] = (unsigned char)t; m[n++] = (unsigned char)pg; m[n++] = (unsigned char)mach;
+    for (unsigned k = 0; k < 6; k++)
+        for (unsigned i = 0; i < 5; i++) {
+            unsigned c = d[0x16 + 6 * k + i];
+            m[n++] = (unsigned char)(c >= 32 && c < 127 ? c : 32);
+        }
+    for (unsigned k = 0; k < 6; k++) m[n++] = (unsigned char)(U8(0x80000810u + 72u * t + 6u * pg + k) & 127u);
+    m[n++] = 0xf7;
+    rt_usb(n, m);
+}

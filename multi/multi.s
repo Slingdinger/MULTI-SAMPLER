@@ -117,8 +117,14 @@ mu_release:
 | main view's draw (its page knobs at 0x4004e5..): the AMP page's labels as the active track's machine
 | wants them (mu_amp_ui, mu.c).
         .global mu_amp_draw,mu_dsp_hook
+        .weak   rt_ctl_poll
 mu_amp_draw:
         jsr     mu_amp_ui
+        lea     rt_ctl_poll,%a0           | MIDI ROUTING's controller link (225), weak
+        cmpa.l  #0,%a0
+        beq.s   1f
+        jsr     (%a0)
+1:
         link.w  %fp,#-152
         movem.l %d2-%d7/%a2-%a5,(%sp)
         jmp     (0x4004d950).l
