@@ -5,7 +5,7 @@ NOTE SETUP (FUNC + SRC on a MIDI track): the left box shows the routing, MIDI tr
 audio tracks T1-T8 down. The arrows move the cursor (its MIDI track's column inverted, its audio
 track's number boxed), YES routes or unroutes that cell (with a CHAN / BANK / PROG / SBNK edit
 waiting, YES applies it as stock). D: MODE, F: OUT, for the cursor's MIDI track:
-  MODE  ALL: every note on every routed track; SPRD: one note a track (chords)
+  MODE  ALL: every note on every routed track; LINK: one note a track (chords)
   OUT   where the routed track's notes also go: OFF, DIN, USB, BOTH
 Each routed note plays on its audio track as a CHROMATIC key's live note: the pitch as the track's
 PTCH lock (+-12 semitones) and, on a FLEX track whose sample's name holds a note ("MELLO C3.wav"),
@@ -31,15 +31,18 @@ MODULE = Module(
     author_url="https://github.com/sambanks/octabam",
     proof=Proof.PORT,
     proof_note="the map, cursor, YES, MODE / OUT and routed notes under the port; not on a unit",
-    doc="NOTE SETUP shows a MIDI-to-audio routing map (arrows + YES; D MODE ALL/SPRD, F OUT OFF/DIN/USB/BOTH): routed MIDI tracks play audio tracks, multisampled from FLEX slots named by note.",
+    doc="NOTE SETUP shows a MIDI-to-audio routing map (arrows + YES; D MODE ALL/LINK, F OUT OFF/DIN/USB/BOTH): routed MIDI tracks play audio tracks, multisampled from FLEX slots named by note.",
     requires_brain=True,
     store=Store("octabam.midi-routing"),
     settings=tuple(Setting(m + 1, f"M{m + 1} TRKS", Number(0, 255), default=1 << m, **P,
                            doc=f"the audio tracks MIDI track {m + 1} plays (bit 0 = T1)") for m in range(8))
-    + tuple(Setting(m + 9, f"M{m + 1} MODE", Option("ALL", "SPRD"), default="SPRD", **P,
+    + tuple(Setting(m + 9, f"M{m + 1} MODE", Option("ALL", "LINK"), default="LINK", **P,
                     doc=f"MIDI track {m + 1}: every note on every routed track, or one note a track") for m in range(8))
     + tuple(Setting(m + 17, f"M{m + 1} OUT", Option("OFF", "DIN", "USB", "BOTH"), default="BOTH", **P,
-                    doc=f"where MIDI track {m + 1}'s routed notes also go") for m in range(8)),
+                    doc=f"where MIDI track {m + 1}'s routed notes also go") for m in range(8))
+    + tuple(Setting(m + 25, f"M{m + 1} IN", Option("OFF", "ON"), default="ON", **P,
+                    doc=f"MIDI IN on MIDI track {m + 1}'s CHAN plays its routed audio tracks; stock's audio "
+                        "note-in ignores that channel") for m in range(8)),
     conflicts=(("303 FOLLOW", "the same MIDI-track sender operands and f3_page_send"),
                ("MIDI LOOPBACK", "the same MIDI-track sender operands"),
                ("CHORD SPREAD", "the same MIDI-track sender operands and f3_page_send"),
@@ -48,7 +51,7 @@ MODULE = Module(
     pokes=(
         Poke(0x400d3e8a, b"----\0\0", b"MODE\0\0", "NOTE SETUP D label"),
         Poke(0x400d3e96, b"----\0\0", b"OUT\0\0\0", "NOTE SETUP F label"),
-        Poke(0x400d3efc, H("00000080"), H("00000002"), "MODE: ALL, SPRD"),
+        Poke(0x400d3efc, H("00000080"), H("00000002"), "MODE: ALL, LINK"),
         Poke(0x400d3f04, H("00000080"), H("00000004"), "OUT: OFF, DIN, USB, BOTH"),
         Poke(0x400d3f5c, bytes(4), H("400467a4"), "MODE text widget, like CHAN"),
         Poke(0x400d3f64, bytes(4), H("400467a4"), "OUT text widget"),
@@ -71,6 +74,10 @@ MODULE = Module(
     symbol_refs=tuple(SymbolRef(site, 0x40010bc8, "midirouting", "rt_send",
                                 "a MIDI-track note can play its routed audio tracks")
                       for site in NOTE_SITES) + (
+        SymbolRef(0x4000e054, 0x40001854, "midirouting", "rt_map_notes",
+                  "MIDI IN note-on's channel map: an IN MIDI track's channel is no audio track's (221)"),
+        SymbolRef(0x4000dbba, 0x40001854, "midirouting", "rt_map_notes",
+                  "MIDI IN note-off's channel map, the same (221)"),
         SymbolRef(0x4009ea96, 0x40010bc8, "midirouting", "rt_send_live",
                   "a MIDI track's live note-on (CHROMATIC / CHORDS keys) can play its routed audio tracks"),
         SymbolRef(0x4009ea68, 0x40010bc8, "midirouting", "rt_send", "the live note's re-trigger note-off"),

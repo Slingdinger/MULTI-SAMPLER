@@ -13,7 +13,8 @@ M1-M8 across, audio tracks T1-T8 down. A filled square is a route.
 |---|---|
 | Arrows | Move the cursor: its MIDI track's column is inverted, its audio track's number boxed. It opens on the track you opened NOTE SETUP from. |
 | YES | Route or unroute the cell. With a CHAN / BANK / PROG / SBNK edit waiting, YES applies it, as stock. |
-| D: MODE | For the cursor's MIDI track. **SPRD**: one note a track (chords; a note past the last free track takes the one sounding longest). **ALL**: every note on every routed track. |
+| D: MODE | For the cursor's MIDI track. **LINK**: one note a track (chords; a note past the last free track takes the one sounding longest). **ALL**: every note on every routed track. |
+| FUNC + D: IN | For the cursor's MIDI track. **ON** (default): a keyboard on its CHAN (MIDI IN) plays its routed audio tracks, and stock's audio note-in ignores that channel (no track trigs, mutes or doubled notes). **OFF**: MIDI IN as stock. Turn D without FUNC to see MODE again. |
 | F: OUT | Where the cursor's MIDI track's routed notes also go: **OFF**, **DIN**, **USB**, **BOTH**. |
 
 A new project starts with each MIDI track routed to its own audio track (M1 to T1 ... M8 to T8),
@@ -35,7 +36,7 @@ written to their sequencers.
 ## Machines
 
 FLEX and STATIC tracks play routed notes as above. A **MULTI** track (modules/multi) takes them
-as its own notes: up to eight at once on the one track, its multisample choosing the files; SPRD
+as its own notes: up to eight at once on the one track, its multisample choosing the files; LINK
 fills a MULTI track's eight voices before the next routed track. Other machines (303, FM, POLY8)
 need their adapters, not built yet.
 

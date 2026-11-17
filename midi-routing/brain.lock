@@ -15,7 +15,7 @@
   "10": {
    "labels": [
     "ALL",
-    "SPRD"
+    "LINK"
    ],
    "name": "M2 MODE",
    "type": "option"
@@ -23,7 +23,7 @@
   "11": {
    "labels": [
     "ALL",
-    "SPRD"
+    "LINK"
    ],
    "name": "M3 MODE",
    "type": "option"
@@ -31,7 +31,7 @@
   "12": {
    "labels": [
     "ALL",
-    "SPRD"
+    "LINK"
    ],
    "name": "M4 MODE",
    "type": "option"
@@ -39,7 +39,7 @@
   "13": {
    "labels": [
     "ALL",
-    "SPRD"
+    "LINK"
    ],
    "name": "M5 MODE",
    "type": "option"
@@ -47,7 +47,7 @@
   "14": {
    "labels": [
     "ALL",
-    "SPRD"
+    "LINK"
    ],
    "name": "M6 MODE",
    "type": "option"
@@ -55,7 +55,7 @@
   "15": {
    "labels": [
     "ALL",
-    "SPRD"
+    "LINK"
    ],
    "name": "M7 MODE",
    "type": "option"
@@ -63,7 +63,7 @@
   "16": {
    "labels": [
     "ALL",
-    "SPRD"
+    "LINK"
    ],
    "name": "M8 MODE",
    "type": "option"
@@ -155,12 +155,76 @@
    "name": "M8 OUT",
    "type": "option"
   },
+  "25": {
+   "labels": [
+    "OFF",
+    "ON"
+   ],
+   "name": "M1 IN",
+   "type": "option"
+  },
+  "26": {
+   "labels": [
+    "OFF",
+    "ON"
+   ],
+   "name": "M2 IN",
+   "type": "option"
+  },
+  "27": {
+   "labels": [
+    "OFF",
+    "ON"
+   ],
+   "name": "M3 IN",
+   "type": "option"
+  },
+  "28": {
+   "labels": [
+    "OFF",
+    "ON"
+   ],
+   "name": "M4 IN",
+   "type": "option"
+  },
+  "29": {
+   "labels": [
+    "OFF",
+    "ON"
+   ],
+   "name": "M5 IN",
+   "type": "option"
+  },
   "3": {
    "max": 255,
    "min": 0,
    "name": "M3 TRKS",
    "step": 1,
    "type": "number"
+  },
+  "30": {
+   "labels": [
+    "OFF",
+    "ON"
+   ],
+   "name": "M6 IN",
+   "type": "option"
+  },
+  "31": {
+   "labels": [
+    "OFF",
+    "ON"
+   ],
+   "name": "M7 IN",
+   "type": "option"
+  },
+  "32": {
+   "labels": [
+    "OFF",
+    "ON"
+   ],
+   "name": "M8 IN",
+   "type": "option"
   },
   "4": {
    "max": 255,
@@ -200,7 +264,7 @@
   "9": {
    "labels": [
     "ALL",
-    "SPRD"
+    "LINK"
    ],
    "name": "M1 MODE",
    "type": "option"

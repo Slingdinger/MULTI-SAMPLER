@@ -2,8 +2,10 @@
  *
  * Per MIDI track (BRAIN PROJECT settings, so saved with the project):
  *   TRKS  the audio tracks it plays (bit k = T(k+1))
- *   MODE  0 ALL (every note on every routed track), 1 SPRD (one note a track)
+ *   MODE  0 ALL (every note on every routed track), 1 LINK (one note a track)
  *   OUT   where its notes also go: 0 OFF, 1 DIN, 2 USB, 3 BOTH
+ *   IN    1: notes from MIDI IN on its CHAN play its audio tracks, and stock's audio note-in ignores
+ *         that channel (no track trigs, mutes or second notes); 0: MIDI IN as stock (OctaZach 221)
  * A routed note plays as a CHROMATIC key's live note: the pitch as the track's PTCH lock (5 a semitone,
  * +-12) and, on a FLEX track whose sample is named with a note ("MELLO C3"), the nearest-note slot of
  * the run of slots around it that share its name as the sample lock (a multisample).
@@ -20,10 +22,13 @@
 #define SETTINGS(s) (0x100b14f0u + 0x448u * (s))
 #define PART() (U32(0x46c82456u) + 6322u * (U8(0x80000003u) & 3u))
 
-extern int *const rt_v[24];             /* rt.s: the BRAIN value longs, TRKS M1-M8, MODE, OUT */
+extern int *const rt_v[32];             /* rt.s: the BRAIN value longs, TRKS M1-M8, MODE, OUT */
 #define TRKS(m) (*rt_v[(m)])
 #define MODE(m) (*rt_v[8 + (m)])
 #define OUTV(m) (*rt_v[16 + (m)])
+#define INV(m) (*rt_v[24 + (m)])
+#define FUNC_HELD 0x46c7dd26u                                     /* long: nonzero while FUNCTION is down */
+#define LABEL_D 0x400d3e8au                                       /* NOTE SETUP D's label (6 bytes) */
 extern void rt_din(unsigned len, const unsigned char *m);
 extern void rt_usb(unsigned len, const unsigned char *m);
 
@@ -199,7 +204,7 @@ static void rt_on_note(unsigned t, unsigned ch, unsigned p) {
         for (unsigned k = 0; k < 8; k++) if (rt_on[idx] >> k & 1) rt_stop(k, idx);
     if (MODE(t) == 0) {
         for (unsigned k = 0; k < 8; k++) if (mask >> k & 1) rt_play(k, p, ch, t);
-    } else {                             /* SPRD: the first routed track with a free voice, else the oldest */
+    } else {                             /* LINK: the first routed track with a free voice, else the oldest */
         unsigned best = 8, age = 0xffffffffu;
         for (unsigned k = 0; k < 8 && best == 8; k++)
             if ((mask >> k & 1) && rt_held[k] < (rt_multi(k) ? 8u : 1u)) best = k;
@@ -251,7 +256,21 @@ void rt_midi_in(const unsigned char *m) {
     if (U32(0x80000012u) && U8(0x80000047u) == ch) act = U8(0x80000000u) & 7u;
     for (unsigned t = 0; t < 8; t++) {
         if (t != act && U8(part + 0x8f262u + 36u * t) != ch + 1u) continue;
-        if ((unsigned)TRKS(t) & 255u) rt_on_note(t, ch, p);
+        if (INV(t) && ((unsigned)TRKS(t) & 255u)) rt_on_note(t, ch, p);
+    }
+}
+
+/* After stock rebuilt its channel -> listener map (0x40001854: 0x46c7febe, a long a channel, bits 0-7
+ * the audio tracks on it, 8 the auto channel) in its MIDI IN note-on and note-off: a channel an IN
+ * MIDI track takes is no audio track's and not the auto one for that note, so stock passes it on as a
+ * MIDI track's note only (no track trigs 36-43, no mutes 48-55, no chromatic 72-96 doubling ours). */
+void rt_map_fix(void) {
+    unsigned part = PART();
+    for (unsigned t = 0; t < 8; t++) {
+        unsigned c = U8(part + 0x8f262u + 36u * t);
+        if (!c || c > 16 || !INV(t) || !((unsigned)TRKS(t) & 255u)) continue;
+        volatile unsigned *e = (volatile unsigned *)(0x46c7febeu + 4u * (c - 1u));
+        *e &= ~0x1ffu;
     }
 }
 
@@ -312,9 +331,24 @@ int rt_yes(void) {
 }
 
 /* D (MODE) and F (OUT) turned by n choices, for the cursor's MIDI track */
+unsigned char rt_inview;                                       /* 1: knob D shows IN (FUNC + D) */
+
+static void rt_label(void) {
+    static const char mode[6] = "MODE", in[6] = "IN";
+    const char *l = rt_inview ? in : mode;
+    for (unsigned i = 0; i < 6; i++) U8(LABEL_D + i) = (unsigned char)l[i];
+}
+
+void rt_view_reset(void) { rt_inview = 0; rt_label(); }
+
 void rt_knob(unsigned knob, int n) {
     unsigned cx = rt_cx & 7u;
-    if (knob == 3) { int v = MODE(cx) + n; MODE(cx) = v < 0 ? 0 : v > 1 ? 1 : v; }
+    if (knob == 3) {
+        unsigned in = U32(FUNC_HELD) != 0;
+        if (in != rt_inview) { rt_inview = (unsigned char)in; rt_label(); return; }  /* the first detent shows it */
+        if (in) { int v = INV(cx) + n; INV(cx) = v < 0 ? 0 : v > 1 ? 1 : v; }
+        else { int v = MODE(cx) + n; MODE(cx) = v < 0 ? 0 : v > 1 ? 1 : v; }
+    }
     else { int v = OUTV(cx) + n; OUTV(cx) = v < 0 ? 0 : v > 3 ? 3 : v; }
 }
-int rt_value(unsigned knob) { return knob == 3 ? MODE(rt_cx & 7u) : OUTV(rt_cx & 7u); }
+int rt_value(unsigned knob) { return knob == 3 ? (rt_inview ? INV(rt_cx & 7u) : MODE(rt_cx & 7u)) : OUTV(rt_cx & 7u); }

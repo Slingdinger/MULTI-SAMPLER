@@ -14,7 +14,7 @@ no timestretch. Forked from repeat98's POLY MACHINE (four voices; source pinned 
 
 ## Play
 
-- **MIDI ROUTING:** route a MIDI track to it (NOTE SETUP, MODE **ALL** for one MULTI track; **SPRD**
+- **MIDI ROUTING:** route a MIDI track to it (NOTE SETUP, MODE **ALL** for one MULTI track; **LINK**
   fills one MULTI track's eight voices, then the next routed track).
 - **CHROMATIC keys** on the track, at stock's pitches: trig 1 is an octave below the chosen file's
   note (at it after FUNC + RIGHT), and each key picks its nearest file.

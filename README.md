@@ -56,7 +56,7 @@ A multisampler for the Octatrack MKI/MKII (OS 1.40C), built as two
   linear interpolation).
 - **Mix:** every voice at -6 dB however many sound (a note keeps its level as others join); the
   mix clips, never wraps, past full scale.
-- **Stacking:** route a MIDI track to two MULTI tracks with MODE **SPRD** and it fills one track's eight
+- **Stacking:** route a MIDI track to two MULTI tracks with MODE **LINK** and it fills one track's eight
   voices, then the next: 16 voices, each track with its own AMP, FX and level (not yet tested with
   two MULTI tracks). A layer is another
   MULTI track with another set, ticked for the same MIDI track (MODE ALL).
@@ -72,13 +72,14 @@ play it.
 |---|---|
 | Arrows | Move the cursor: its MIDI track's column inverted, its audio track's number boxed. |
 | YES | Route / unroute that cell. With a CHAN / BANK / PROG / SBNK edit waiting, YES applies that instead (stock). |
-| D: MODE | **SPRD**: one note a track (a MULTI track counts as eight). **ALL**: every note on every routed track. |
+| D: MODE | **LINK**: one note a track (a MULTI track counts as eight). **ALL**: every note on every routed track. |
+| FUNC + D: IN | **ON** (default): a keyboard on the MIDI track's CHAN plays its routed audio tracks, and stock's audio note-in ignores that channel. **OFF**: MIDI IN as stock. D alone shows MODE again. |
 | F: OUT | Where the routed notes also go: **OFF**, **DIN**, **USB**, **BOTH**. |
 
 **MIDI IN:** a note from outside on a routed MIDI track's CHAN (or on the auto channel in MIDI mode,
 for the active MIDI track) plays its audio tracks too, over the whole note range. Stock still passes
-it on to MIDI OUT as before. Keep the keyboard off an audio track's own channel with AUDIO NOTE IN on,
-or notes 72-96 play twice.
+it on to MIDI OUT as before. With IN ON (FUNC + D) stock's audio note-in ignores that channel, so no track trigs,
+mutes or doubled notes.
 
 A new project starts with M1 → T1 … M8 → T8 and OUT BOTH (external gear still plays); untick a cell
 to stop a route. A MIDI track needs a CHAN for its notes to play. Unrouted MIDI tracks are stock.
